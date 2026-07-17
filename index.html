@@ -143,15 +143,20 @@
             }
         }
 
-        function startScanning() {
-            if (html5QrcodeScanner) return; 
-
-            html5QrcodeScanner = new Html5Qrcode("interactive-reader");
-
+      function startScanning() {
+        // --- MULTI-SCAN FIX 1: CLEAR ANY ZOMBIE NODES ---
+        // Wipe out any lingering internal tracking text nodes leftover by the library
+        const readerContainer = document.getElementById("interactive-reader");
+        if (readerContainer) {
+            readerContainer.innerHTML = "";
+        }
+    
+        // Always instantiate a completely pristine new engine map instance
+        html5QrcodeScanner = new Html5Qrcode("interactive-reader");
+    
         const config = {
-            fps: 15, // Slightly faster scanning cycle frames
+            fps: 15, 
             qrbox: (videoWidth, videoHeight) => {
-                // Broadens the box horizontally to catch the entire book barcode easily
                 const boxWidth = Math.min(videoWidth * 0.90, 360);
                 const boxHeight = Math.min(videoHeight * 0.50, 180);
                 return { width: boxWidth, height: boxHeight };
@@ -161,16 +166,16 @@
                 Html5QrcodeSupportedFormats.EAN_8 
             ]
         };
-
-            html5QrcodeScanner.start(
-                { facingMode: "environment" },
-                config,
-                onScanSuccess
-            ).catch(err => {
-                showStatus(`📷 Camera Initialization Failed: ${err}`, "error");
-                resetScannerUIState();
-            });
-        }
+    
+        html5QrcodeScanner.start(
+            { facingMode: "environment" },
+            config,
+            onScanSuccess
+        ).catch(err => {
+            showStatus(`📷 Camera Initialization Failed: ${err}`, "error");
+            resetScannerUIState();
+        });
+    }
 
         function stopScanning() {
             if (html5QrcodeScanner) {
@@ -189,12 +194,23 @@
             }
         }
 
-        function resetScannerUIState() {
-            html5QrcodeScanner = null;
-            scannerSection.classList.add("hidden");
-            toggleScanBtn.innerText = "Open Scanner";
-            toggleScanBtn.className = "bg-indigo-600 hover:bg-indigo-700 text-white font-medium px-5 py-3 rounded-xl text-sm transition-colors shadow-sm cursor-pointer flex items-center justify-center gap-2";
+           function resetScannerUIState() {
+        // --- MULTI-SCAN FIX 2: FORCE DEEP REBOOT CLEANUP ---
+        if (html5QrcodeScanner) {
+            // Disconnect references entirely so it can't jam future allocation loops
+            html5QrcodeScanner = null; 
         }
+        
+        // Explicitly clean up hidden structural elements created by the script
+        const readerContainer = document.getElementById("interactive-reader");
+        if (readerContainer) {
+            readerContainer.innerHTML = "";
+        }
+    
+        scannerSection.classList.add("hidden");
+        toggleScanBtn.innerText = "Open Scanner";
+        toggleScanBtn.className = "bg-indigo-600 hover:bg-indigo-700 text-white font-medium px-5 py-3 rounded-xl text-sm transition-colors shadow-sm cursor-pointer flex items-center justify-center gap-2";
+    }
 
         function onScanSuccess(decodedText) {
             isbnInput.value = decodedText;
