@@ -3,16 +3,13 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Ultimate Library Tracker</title>
+    <title>Librify - Book Scanner & Collection Tracker</title>
+    <!-- Tailwind CSS CDN for presentation styling -->
     <script src="https://cdn.jsdelivr.net/npm/@tailwindcss/browser@4"></script>
+    <!-- html5-qrcode production library dependency -->
     <script src="https://unpkg.com/html5-qrcode" type="text/javascript"></script>
     <style>
-        #interactive-reader video {
-            width: 100% !important;
-            border-radius: 0.75rem;
-            object-fit: cover;
-        }
-        /* Complete container framework fix for vertical viewports */
+        /* Complete container framework fix for vertical mobile viewports */
         #interactive-reader {
             width: 100% !important;
             max-width: 100% !important;
@@ -26,9 +23,9 @@
         #interactive-reader video {
             width: 100% !important;
             height: auto !important;
-            max-height: 45vh !important; /* Prevents long-page extensions on tall devices */
+            max-height: 40vh !important;
             object-fit: cover !important;
-            border-radius: 0.75rem;
+            border-radius: 0.5rem;
         }
 
         /* Centers and locks down the scanning placement box element layers */
@@ -40,173 +37,120 @@
         }
     </style>
 </head>
-<body class="bg-gray-50 text-gray-900 font-sans antialiased pb-12">
+<body class="bg-gray-50 text-gray-800 font-sans min-h-screen pb-12">
 
-    <header class="bg-violet-700 text-white shadow-md sticky top-0 z-50 p-4 flex justify-between items-center">
-        <h1 class="text-xl font-bold tracking-tight">🔮 Mega Library</h1>
-        <button id="toggle-scan-btn" onclick="toggleScanner()" class="bg-white text-violet-700 font-semibold px-4 py-1.5 rounded-full text-sm shadow hover:bg-violet-50 cursor-pointer transition-colors">
-            Open Scanner
-        </button>
-    </header>
+    <div class="max-w-xl mx-auto p-4 sm:p-6">
+        <!-- Header -->
+        <header class="text-center my-6">
+            <h1 class="text-3xl font-extrabold text-indigo-600 tracking-tight">Librify</h1>
+            <p class="text-sm text-gray-500 mt-1">Scan a book's barcode or type an ISBN to manage your collection</p>
+        </header>
 
-    <main class="max-w-md mx-auto p-4 space-y-6">
-        <!-- Optimized Scanner Panel -->
-        <section id="scanner-section" class="hidden bg-white p-4 rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
-            <div id="interactive-reader" class="w-full bg-black rounded-xl overflow-hidden aspect-video"></div>
-            <p class="text-center text-xs text-gray-400 mt-2">Center the book barcode within the framing guide.</p>
-        </section>
-
-        <!-- Dynamic Post-Scan Metadata & Context Form -->
-        <section id="category-modal" class="hidden bg-white p-5 rounded-2xl shadow-md border-2 border-violet-100 space-y-4">
-            <div class="flex gap-3 items-center bg-violet-50/50 p-3 rounded-xl">
-                <img id="modal-cover" src="" class="w-12 h-16 object-cover rounded shadow-xs bg-gray-200">
-                <div class="min-w-0 flex-1">
-                    <h3 id="modal-title" class="font-bold text-sm text-gray-900 truncate"></h3>
-                    <p id="modal-author" class="text-xs text-gray-500 truncate"></p>
-                    <div class="flex gap-1 mt-1">
-                        <span id="modal-genre" class="text-[10px] bg-violet-100 text-violet-800 px-1.5 py-0.5 rounded font-medium"></span>
-                        <span id="modal-pages" class="text-[10px] bg-gray-100 text-gray-700 px-1.5 py-0.5 rounded font-medium"></span>
-                    </div>
+        <!-- Main Dashboard Actions -->
+        <div class="bg-white rounded-2xl shadow-sm border border-gray-100 p-5 space-y-4">
+            
+            <!-- Controls Form -->
+            <div class="flex flex-col sm:flex-row gap-3">
+                <div class="relative flex-grow">
+                    <input type="text" id="isbn-input" placeholder="Enter 10 or 13-digit ISBN..." 
+                        class="w-full pl-4 pr-10 py-3 bg-gray-50 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-indigo-500 text-sm transition-all">
                 </div>
+                <button id="toggle-scan-btn" onclick="toggleScanner()" 
+                    class="bg-indigo-600 hover:bg-indigo-700 text-white font-medium px-5 py-3 rounded-xl text-sm transition-colors shadow-sm cursor-pointer flex items-center justify-center gap-2">
+                    <span>Open Scanner</span>
+                </button>
             </div>
 
-            <!-- Multi-Copy Variant Tracker Selector Box -->
-            <div id="copy-management-box" class="bg-violet-50 p-3 rounded-xl border border-violet-200 space-y-2">
-                <label class="block text-[11px] font-bold text-violet-800 uppercase">Select Physical Copy</label>
-                <div id="copy-buttons-list" class="flex flex-wrap gap-2">
-                    <!-- Dynamic Copy selection chips appear here -->
-                </div>
-                <div id="copy-badge-indicator" class="text-[11px] font-medium text-violet-600 italic"></div>
+            <!-- Interactive Camera Scanner Window Section -->
+            <div id="scanner-section" class="hidden border-2 border-dashed border-gray-200 rounded-2xl p-3 bg-gray-50 overflow-hidden transition-all duration-300">
+                <div id="interactive-reader" class="w-full mx-auto"></div>
+                <p class="text-center text-xs text-gray-400 mt-2">Center the book's linear barcode inside the highlighted rectangle box.</p>
             </div>
 
-            <!-- Loan Management Module -->
-            <div class="bg-slate-50 p-3 rounded-xl border border-slate-200 space-y-2">
-                <div class="flex justify-between items-center">
-                    <label class="text-xs font-bold text-gray-700 uppercase">Availability Status</label>
-                    <select id="input-status" class="bg-white border border-gray-300 rounded-lg text-xs p-1.5 font-semibold focus:ring-2 focus:ring-violet-500">
-                        <option value="Available">🟢 Available (In Library)</option>
-                        <option value="Checked Out">🔴 Checked Out (Loaned)</option>
-                    </select>
-                </div>
-                <div id="borrower-input-container" class="hidden pt-1">
-                    <label class="block text-[11px] font-bold text-gray-500 uppercase mb-1">Who borrowed this book?</label>
-                    <input type="text" id="input-borrower" placeholder="Enter friend's name..." class="w-full bg-white border border-gray-200 rounded-lg p-2 text-xs focus:ring-2 focus:ring-violet-500">
-                </div>
+            <!-- Feedback App Status Log Messages -->
+            <div id="status-log" class="hidden text-sm p-3 rounded-xl border font-medium text-center"></div>
+        </div>
+
+        <!-- Render Target Output Area (Combines Book Details & Meta Tracking Inputs) -->
+        <main id="book-result" class="mt-6 space-y-6"></main>
+
+        <!-- Session Activity History Feed Container -->
+        <div id="history-section" class="mt-8 hidden">
+            <div class="border-b border-gray-200 pb-2 mb-3">
+                <h2 class="text-xs font-bold text-gray-400 uppercase tracking-wider">Session Activity</h2>
             </div>
+            <div id="session-log" class="space-y-3"></div>
+        </div>
+    </div>
 
-            <!-- Shelf Location Dropdown Selection -->
-            <div>
-                <label class="block text-xs font-bold text-gray-500 uppercase mb-1">Where will you shelf this book?</label>
-                <select id="input-location" class="w-full bg-gray-50 border border-gray-200 rounded-lg p-2.5 text-sm focus:ring-2 focus:ring-violet-500">
-                    <option value="Living Room Main">Living Room Main</option>
-                    <option value="Office Bookshelf">Office Bookshelf</option>
-                    <option value="Bedroom Table">Bedroom Table</option>
-                    <option value="Unassigned / Pile">Unassigned / Pile</option>
-                </select>
-            </div>
-
-            <!-- Multiple Selection Chip Field Elements -->
-            <div>
-                <label class="block text-xs font-bold text-gray-500 uppercase mb-1">Apply Custom Tags</label>
-                <div id="tag-chips-container" class="flex flex-wrap gap-2 mt-1">
-                    <button type="button" class="tag-chip bg-gray-100 text-gray-700 px-3 py-1.5 text-xs font-semibold rounded-full border border-gray-200 transition" data-val="To Read">➕ To Read</button>
-                    <button type="button" class="tag-chip bg-gray-100 text-gray-700 px-3 py-1.5 text-xs font-semibold rounded-full border border-gray-200 transition" data-val="Favorite">❤️ Favorite</button>
-                    <button type="button" class="tag-chip bg-gray-100 text-gray-700 px-3 py-1.5 text-xs font-semibold rounded-full border border-gray-200 transition" data-val="Hardcover">📖 Hardcover</button>
-                    <button type="button" class="tag-chip bg-gray-100 text-gray-700 px-3 py-1.5 text-xs font-semibold rounded-full border border-gray-200 transition" data-val="Borrowed">⏳ Borrowed</button>
-                </div>
-            </div>
-
-            <button id="submit-to-sheet-btn" class="w-full bg-violet-600 text-white font-bold py-2.5 rounded-xl text-sm shadow hover:bg-violet-700 transition cursor-pointer">
-                Confirm & Sync Data
-            </button>
-        </section>
-
-        <!-- App Action Global Status Feedback Box -->
-        <div id="status-box" class="hidden p-4 rounded-xl text-sm font-medium text-center"></div>
-
-        <!-- Local Session Running History Feed -->
-        <div class="border-b border-gray-200 pb-2"><h2 class="text-sm font-bold text-gray-500 uppercase tracking-wider">Session Activity</h2></div>
-        <section id="session-log" class="space-y-3"></section>
-    </main>
-
+    <!-- Main Core Business Script Execution Block -->
     <script>
         // =========================================================================
         // !!! PASTE YOUR GOOGLE APPS SCRIPT WEB APP EXTENSION URL API LINK HERE !!!
         // =========================================================================
         const GOOGLE_SCRIPT_URL = "https://script.google.com/macros/s/AKfycbwm40P8tFwbe2iyRiPe3tRarSCi8d3f9RsVTdzVHyFfnIr0cecuPkzxSOs9OCawuc3eJw/exec";
 
+        // DOM Nodes Elements Scaffolding References
+        const toggleScanBtn = document.getElementById("toggle-scan-btn");
+        const scannerSection = document.getElementById("scanner-section");
+        const statusLog = document.getElementById("status-log");
+        const bookResult = document.getElementById("book-result");
+        const isbnInput = document.getElementById("isbn-input");
+        const historySection = document.getElementById("history-section");
+        const sessionLog = document.getElementById("session-log");
+
         // Application State Managers
         let html5QrcodeScanner = null;
         let currentScannedBook = null;
         let activeCopiesData = [];
         let selectedUniqueId = "";
-        
-        // Element Structural Selectors Mapping References
-        const toggleScanBtn = document.getElementById('toggle-scan-btn');
-        const scannerSection = document.getElementById('scanner-section');
-        const categoryModal = document.getElementById('category-modal');
-        const statusBox = document.getElementById('status-box');
-        const sessionLog = document.getElementById('session-log');
-        const statusSelect = document.getElementById('input-status');
-        const borrowerContainer = document.getElementById('borrower-input-container');
-        const borrowerInput = document.getElementById('input-borrower');
-        const copyButtonsList = document.getElementById('copy-buttons-list');
-        const copyBadgeIndicator = document.getElementById('copy-badge-indicator');
 
-        // Dynamic Field Interactions Logic Control Loops
-        statusSelect.addEventListener('change', () => {
-            if (statusSelect.value === "Checked Out") {
-                borrowerContainer.classList.remove('hidden');
-            } else {
-                borrowerContainer.classList.add('hidden');
-                borrowerInput.value = "";
+        // Auto-hook the manual search input typing event listener trigger
+        isbnInput.addEventListener("keyup", function(event) {
+            if (event.key === "Enter") {
+                const queryVal = isbnInput.value.trim().replace(/[-\s]/g, "");
+                if (queryVal) {
+                    checkExistingAndFetchMetadata(queryVal);
+                }
             }
         });
 
-        document.querySelectorAll('.tag-chip').forEach(chip => {
-            chip.addEventListener('click', () => {
-                chip.classList.toggle('bg-gray-100');
-                chip.classList.toggle('text-gray-700');
-                chip.classList.toggle('border-gray-200');
-                chip.classList.toggle('bg-violet-600');
-                chip.classList.toggle('text-white');
-                chip.classList.toggle('border-violet-600');
-            });
-        });
-
-        function resetChips() {
-            document.querySelectorAll('.tag-chip').forEach(chip => {
-                chip.className = "tag-chip bg-gray-100 text-gray-700 px-3 py-1.5 text-xs font-semibold rounded-full border border-gray-200 transition";
-            });
+        function showStatus(message, type = "info") {
+            statusLog.className = "text-sm p-3 rounded-xl border font-medium text-center block";
+            if (type === "error") {
+                statusLog.classList.add("bg-red-50", "border-red-200", "text-red-700");
+            } else if (type === "success") {
+                statusLog.classList.add("bg-green-50", "border-green-200", "text-green-700");
+            } else {
+                statusLog.classList.add("bg-blue-50", "border-blue-200", "text-blue-700");
+            }
+            statusLog.innerText = message;
         }
 
-        function selectChipByVal(val) {
-            document.querySelectorAll('.tag-chip').forEach(chip => {
-                if(chip.getAttribute('data-val') === val) {
-                    chip.className = "tag-chip bg-violet-600 text-white px-3 py-1.5 text-xs font-semibold rounded-full border border-violet-600 transition";
-                }
-            });
+        function clearStatus() {
+            statusLog.innerText = "";
+            statusLog.className = "hidden";
         }
 
         function toggleScanner() {
-            if (scannerSection.classList.contains('hidden')) {
-                categoryModal.classList.add('hidden');
-                scannerSection.classList.remove('hidden');
+            if (scannerSection.classList.contains("hidden")) {
+                bookResult.innerHTML = ""; // Clear active forms on fresh scan
+                scannerSection.classList.remove("hidden");
                 toggleScanBtn.innerText = "Close Scanner";
+                toggleScanBtn.classList.replace("bg-indigo-600", "bg-gray-600");
                 startScanning();
-            } else { 
-                stopScanning(); 
+            } else {
+                stopScanning();
             }
         }
 
-        // Hardened Scanner initialization routine loop configs
         function startScanning() {
-            if (html5QrcodeScanner) return;
+            if (html5QrcodeScanner) return; 
 
             html5QrcodeScanner = new Html5Qrcode("interactive-reader");
-            
+
             const config = {
-                fps: 12,
+                fps: 12, 
                 qrbox: (videoWidth, videoHeight) => {
                     const boxWidth = Math.min(videoWidth * 0.85, 320);
                     const boxHeight = Math.min(videoHeight * 0.40, 140);
@@ -219,227 +163,347 @@
             };
 
             html5QrcodeScanner.start(
-                { facingMode: "environment" }, 
-                config, 
+                { facingMode: "environment" },
+                config,
                 onScanSuccess
             ).catch(err => {
-                showStatus(`📷 Camera Permission Exception: ${err}`, "error");
-                resetScannerUI();
+                showStatus(`📷 Camera Initialization Failed: ${err}`, "error");
+                resetScannerUIState();
             });
         }
 
         function stopScanning() {
             if (html5QrcodeScanner) {
                 if (html5QrcodeScanner.isScanning) {
-                    html5QrcodeScanner.stop().then(() => { 
-                        resetScannerUI();
+                    html5QrcodeScanner.stop().then(() => {
+                        resetScannerUIState();
                     }).catch(err => {
-                        console.error("Error stopping engine:", err);
-                        resetScannerUI();
+                        console.error("Failed to cleanly disconnect stream: ", err);
+                        resetScannerUIState(); 
                     });
                 } else {
-                    resetScannerUI();
+                    resetScannerUIState();
                 }
             } else {
-                resetScannerUI();
+                resetScannerUIState();
             }
         }
 
-        function resetScannerUI() {
+        function resetScannerUIState() {
             html5QrcodeScanner = null;
-            scannerSection.classList.add('hidden');
+            scannerSection.classList.add("hidden");
             toggleScanBtn.innerText = "Open Scanner";
+            toggleScanBtn.className = "bg-indigo-600 hover:bg-indigo-700 text-white font-medium px-5 py-3 rounded-xl text-sm transition-colors shadow-sm cursor-pointer flex items-center justify-center gap-2";
         }
 
         function onScanSuccess(decodedText) {
-            if (decodedText.startsWith("978") || decodedText.startsWith("979") || decodedText.length >= 10) {
-                navigator.vibrate?.(100);
-                stopScanning();
-                checkExistingAndFetchMetadata(decodedText);
-            }
+            isbnInput.value = decodedText;
+            stopScanning();
+            checkExistingAndFetchMetadata(decodedText);
         }
 
-        // Merged Query Orchestrator Pipeline
+        // Integrated Query Orchestrator & Multi-Copy Sync Parser
         async function checkExistingAndFetchMetadata(isbn) {
-            showStatus(`🔍 Querying collection profiles...`, "info");
-            copyButtonsList.innerHTML = "";
-            copyBadgeIndicator.innerText = "";
+            clearStatus();
+            bookResult.innerHTML = `
+                <div class="flex items-center justify-center py-12">
+                    <div class="animate-spin rounded-full h-8 w-8 border-b-2 border-indigo-600"></div>
+                    <span class="ml-3 text-sm text-gray-500">Syncing collection profiles...</span>
+                </div>
+            `;
+            
+            const cleanIsbn = isbn.trim().replace(/[-\s]/g, "");
             
             try {
-                // Look up matching records inside your active Google Sheet data arrays
-                const lookupResponse = await fetch(`${GOOGLE_SCRIPT_URL}?isbn=${isbn}`);
+                // Step 1: Look up data row variants within Google Sheet indices
+                const lookupResponse = await fetch(`${GOOGLE_SCRIPT_URL}?isbn=${cleanIsbn}`);
                 const lookupData = await lookupResponse.json();
                 activeCopiesData = lookupData.copies || [];
 
-                // Retrieve master structural definitions payload assets via global library indices
-                const response = await fetch(`https://openlibrary.org/api/books?bibkeys=ISBN:${isbn}&jscmd=data&format=json`);
+                // Step 2: Grab primary description catalogs from OpenLibrary
+                const apiUrl = `https://openlibrary.org/api/books?bibkeys=ISBN:${cleanIsbn}&jscmd=data&format=json`;
+                const response = await fetch(apiUrl);
+                if (!response.ok) throw new Error("Database reference mapping latency caught.");
                 const data = await response.json();
-                const bookKey = `ISBN:${isbn}`;
                 
+                const bookKey = `ISBN:${cleanIsbn}`;
                 if (!data || !data[bookKey]) {
-                    showStatus(`❌ API meta mapping error for barcode target: ${isbn}`, "error");
+                    showStatus("No matching structural data log found for this ISBN barcode.", "error");
+                    bookResult.innerHTML = "";
                     return;
                 }
 
                 const vol = data[bookKey];
                 currentScannedBook = {
-                    isbn: isbn,
-                    title: vol.title || "Unknown Title",
-                    authors: vol.authors ? vol.authors.map(a => a.name).join(', ') : "Unknown Author",
-                    published: vol.publish_date || "N/A",
-                    thumbnail: vol.cover?.large || vol.cover?.medium || "",
+                    isbn: cleanIsbn,
+                    title: vol.title || "Unknown Title Content",
+                    authors: vol.authors ? vol.authors.map(a => a.name).join(", ") : "Unregistered Author Data",
+                    publisher: vol.publishers ? vol.publishers.map(p => p.name).join(", ") : "N/A",
+                    date: vol.publish_date || "N/A",
+                    thumbnail: vol.cover && vol.cover.large ? vol.cover.large : 'https://images.unsplash.com/photo-1543002588-bfa74002ed7e?q=80&w=300&auto=format&fit=crop',
                     genre: vol.subjects ? vol.subjects[0].name : "General Reading",
                     pages: vol.number_of_pages ? `${vol.number_of_pages} pgs` : "N/A"
                 };
 
-                // Multi-Copy Selection Render Arrays Loops
-                if (activeCopiesData.length > 0) {
-                    showStatus(`📚 Multi-copy profile detected for this book.`, "info");
-                    activeCopiesData.forEach((copy, index) => {
-                        const btn = document.createElement('button');
-                        btn.type = "button";
-                        const displayStatus = copy.status === "Checked Out" ? "🔴" : "🟢";
-                        btn.className = "px-3 py-1.5 text-xs font-bold rounded-lg border border-gray-300 bg-white shadow-xs transition cursor-pointer";
-                        btn.innerText = `Copy ${index + 1} ${displayStatus}`;
-                        btn.onclick = () => loadCopyProfile(index);
-                        copyButtonsList.appendChild(btn);
-                    });
+                showStatus("Book profile match successfully isolated!", "success");
+                renderIntegratedLayout();
 
-                    const addNewBtn = document.createElement('button');
-                    addNewBtn.type = "button";
-                    addNewBtn.className = "px-3 py-1.5 text-xs font-bold rounded-lg border-2 border-dashed border-violet-400 text-violet-700 bg-violet-50 transition cursor-pointer";
-                    addNewBtn.innerText = "＋ Add New Copy";
-                    addNewBtn.onclick = () => setupNewCopyProfile(isbn);
-                    copyButtonsList.appendChild(addNewBtn);
-
-                    loadCopyProfile(0);
-                } else {
-                    selectedUniqueId = `${isbn}-1`;
-                    copyBadgeIndicator.innerText = "Creating initial physical copy index profile (Copy 1)";
-                    resetFormFieldsForFreshCopy();
-                    statusBox.classList.add('hidden');
-                }
-
-                // Render Metadata visual bindings outputs
-                document.getElementById('modal-title').innerText = currentScannedBook.title;
-                document.getElementById('modal-author').innerText = currentScannedBook.authors;
-                document.getElementById('modal-genre').innerText = currentScannedBook.genre;
-                document.getElementById('modal-pages').innerText = currentScannedBook.pages;
-                document.getElementById('modal-cover').src = currentScannedBook.thumbnail || "https://images.unsplash.com/photo-1543002588-bfa74002ed7e?w=150";
-                categoryModal.classList.remove('hidden');
-
-            } catch (error) { 
-                showStatus(`🚨 Error connecting to script endpoint: ${error.message}`, "error"); 
+            } catch (err) {
+                showStatus(`System exceptions processing assets: ${err.message}`, "error");
+                bookResult.innerHTML = "";
             }
         }
 
-        function loadCopyProfile(index) {
-            resetChips();
+        function renderIntegratedLayout() {
+            // Render basic layout blueprint frame matching Librify's exact presentation output cards
+            bookResult.innerHTML = `
+                <!-- Master Meta Presentation Card -->
+                <div class="bg-white rounded-2xl shadow-sm border border-gray-100 p-6 flex flex-col sm:flex-row gap-6 items-start">
+                    <img src="${currentScannedBook.thumbnail}" alt="Jacket Cover" class="w-full sm:w-32 h-44 object-cover rounded-xl shadow-sm bg-gray-100 flex-shrink-0">
+                    <div class="space-y-2 w-full">
+                        <h2 class="text-xl font-bold text-gray-900 leading-snug">${currentScannedBook.title}</h2>
+                        <p class="text-sm font-medium text-indigo-600">by ${currentScannedBook.authors}</p>
+                        <div class="flex gap-1.5 mt-1">
+                            <span class="text-[10px] bg-indigo-50 text-indigo-700 px-2 py-0.5 rounded font-semibold">${currentScannedBook.genre}</span>
+                            <span class="text-[10px] bg-gray-100 text-gray-600 px-2 py-0.5 rounded font-semibold">${currentScannedBook.pages}</span>
+                        </div>
+                        <hr class="border-gray-100 my-2">
+                        <div class="grid grid-cols-2 gap-y-2 gap-x-4 text-xs text-gray-500">
+                            <div><span class="font-semibold text-gray-400 block uppercase tracking-wider text-[10px]">Publisher</span> <span class="text-gray-700 font-medium">${currentScannedBook.publisher}</span></div>
+                            <div><span class="font-semibold text-gray-400 block uppercase tracking-wider text-[10px]">Date Published</span> <span class="text-gray-700 font-medium">${currentScannedBook.date}</span></div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Custom Form Controls Module -->
+                <div class="bg-white rounded-2xl shadow-sm border border-gray-100 p-5 space-y-4">
+                    <!-- Copy Variant Tracker -->
+                    <div class="bg-indigo-50/50 p-4 rounded-xl border border-indigo-100/80 space-y-2.5">
+                        <label class="block text-[11px] font-bold text-indigo-800 uppercase tracking-wider">Select Tracking Copy Instance</label>
+                        <div id="copy-buttons-list" class="flex flex-wrap gap-2"></div>
+                        <div id="copy-badge-indicator" class="text-xs font-medium text-indigo-600/90 italic pt-0.5"></div>
+                    </div>
+
+                    <!-- Availability Tracking Status Fields -->
+                    <div class="bg-gray-50 p-4 rounded-xl border border-gray-200/60 space-y-3">
+                        <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+                            <label class="text-xs font-bold text-gray-600 uppercase tracking-wider">Availability Status</label>
+                            <select id="input-status" class="bg-white border border-gray-200 rounded-lg text-xs p-2 font-semibold focus:outline-none focus:ring-2 focus:ring-indigo-500">
+                                <option value="Available">🟢 Available (In Library)</option>
+                                <option value="Checked Out">🔴 Checked Out (Loaned)</option>
+                            </select>
+                        </div>
+                        <div id="borrower-input-container" class="hidden space-y-1">
+                            <label class="block text-[11px] font-bold text-gray-400 uppercase tracking-wider">Borrower Identity Name</label>
+                            <input type="text" id="input-borrower" placeholder="Enter companion's identity name..." 
+                                class="w-full bg-white border border-gray-200 rounded-lg p-2.5 text-xs focus:outline-none focus:ring-2 focus:ring-indigo-500">
+                        </div>
+                    </div>
+
+                    <!-- Shelf Location Fields -->
+                    <div class="space-y-1">
+                        <label class="block text-xs font-bold text-gray-600 uppercase tracking-wider">Storage Shelf Location Slot</label>
+                        <select id="input-location" class="w-full bg-gray-50 border border-gray-200 rounded-lg p-2.5 text-xs font-medium focus:outline-none focus:ring-2 focus:ring-indigo-500">
+                            <option value="Living Room Main">Living Room Main</option>
+                            <option value="Office Bookshelf">Office Bookshelf</option>
+                            <option value="Bedroom Table">Bedroom Table</option>
+                            <option value="Unassigned / Pile">Unassigned / Pile</option>
+                        </select>
+                    </div>
+
+                    <!-- Multiple Selection Chip Elements Block -->
+                    <div class="space-y-1">
+                        <label class="block text-xs font-bold text-gray-600 uppercase tracking-wider">Collection Tracking Badges</label>
+                        <div id="tag-chips-container" class="flex flex-wrap gap-2 pt-1">
+                            <button type="button" class="tag-chip bg-gray-50 text-gray-600 border border-gray-200/80 px-3 py-1.5 text-xs font-medium rounded-xl transition-all cursor-pointer" data-val="To Read">➕ To Read</button>
+                            <button type="button" class="tag-chip bg-gray-50 text-gray-600 border border-gray-200/80 px-3 py-1.5 text-xs font-medium rounded-xl transition-all cursor-pointer" data-val="Favorite">❤️ Favorite</button>
+                            <button type="button" class="tag-chip bg-gray-50 text-gray-600 border border-gray-200/80 px-3 py-1.5 text-xs font-medium rounded-xl transition-all cursor-pointer" data-val="Hardcover">📖 Hardcover</button>
+                            <button type="button" class="tag-chip bg-gray-50 text-gray-600 border border-gray-200/80 px-3 py-1.5 text-xs font-medium rounded-xl transition-all cursor-pointer" data-val="Borrowed">⏳ Borrowed</button>
+                        </div>
+                    </div>
+
+                    <!-- Processing Form Submissions Operations Button -->
+                    <button id="submit-to-sheet-btn" onclick="submitDataToGoogleSheets()" 
+                        class="w-full bg-indigo-600 hover:bg-indigo-700 text-white font-semibold py-3 rounded-xl text-sm transition-colors shadow-sm cursor-pointer mt-2">
+                        Confirm & Sync Data Records
+                    </button>
+                </div>
+            `;
+
+            // Attach operational bindings hooks natively to generated nodes elements
+            setupFormInteractions();
+        }
+
+        function setupFormInteractions() {
+            const statusSelect = document.getElementById("input-status");
+            const borrowerContainer = document.getElementById("borrower-input-container");
+            const borrowerInput = document.getElementById("input-borrower");
+            const copyButtonsList = document.getElementById("copy-buttons-list");
+            const copyBadgeIndicator = document.getElementById("copy-badge-indicator");
+
+            statusSelect.addEventListener("change", () => {
+                if (statusSelect.value === "Checked Out") {
+                    borrowerContainer.classList.remove("hidden");
+                } else {
+                    borrowerContainer.classList.add("hidden");
+                    borrowerInput.value = "";
+                }
+            });
+
+            document.querySelectorAll(".tag-chip").forEach(chip => {
+                chip.addEventListener("click", () => {
+                    chip.classList.toggle("bg-gray-50");
+                    chip.classList.toggle("text-gray-600");
+                    chip.classList.toggle("border-gray-200/80");
+                    chip.classList.toggle("bg-indigo-600");
+                    chip.classList.toggle("text-white");
+                    chip.classList.toggle("border-indigo-600");
+                });
+            });
+
+            // Parse Copy arrays variations structural loops options 
+            if (activeCopiesData.length > 0) {
+                activeCopiesData.forEach((copy, index) => {
+                    const btn = document.createElement("button");
+                    btn.type = "button";
+                    const statusEmoji = copy.status === "Checked Out" ? "🔴" : "🟢";
+                    btn.className = "px-3 py-1.5 text-xs font-semibold rounded-lg border border-gray-200 bg-white shadow-xs cursor-pointer transition-all";
+                    btn.innerText = `Copy ${index + 1} ${statusEmoji}`;
+                    btn.onclick = () => loadSelectedCopyProfile(index);
+                    copyButtonsList.appendChild(btn);
+                });
+
+                const addNewBtn = document.createElement("button");
+                addNewBtn.type = "button";
+                addNewBtn.className = "px-3 py-1.5 text-xs font-bold rounded-lg border-2 border-dashed border-indigo-400 text-indigo-600 bg-indigo-50/40 cursor-pointer hover:bg-indigo-50 transition-all";
+                addNewBtn.innerText = "+ Add Copy";
+                addNewBtn.onclick = () => createNewCopyInstanceProfile();
+                copyButtonsList.appendChild(addNewBtn);
+
+                loadSelectedCopyProfile(0);
+            } else {
+                selectedUniqueId = `${currentScannedBook.isbn}-1`;
+                copyBadgeIndicator.innerText = "Creating initial catalog log profile for this title (Copy 1)";
+            }
+        }
+
+        function loadSelectedCopyProfile(index) {
+            resetTagChipsUI();
             const copy = activeCopiesData[index];
             selectedUniqueId = copy.uniqueId;
-            copyBadgeIndicator.innerText = `Editing: Physical Copy Index ${index + 1} (${selectedUniqueId})`;
             
-            Array.from(copyButtonsList.children).forEach((btn, idx) => {
-                if(idx === index) {
-                    btn.className = "px-3 py-1.5 text-xs font-bold rounded-lg border bg-violet-600 text-white shadow-xs cursor-pointer";
+            document.getElementById("copy-badge-indicator").innerText = `Modifying Active Asset Log Row Target: Copy ${index + 1} (${selectedUniqueId})`;
+            
+            const btnList = document.getElementById("copy-buttons-list").children;
+            Array.from(btnList).forEach((btn, idx) => {
+                if (idx === index) {
+                    btn.className = "px-3 py-1.5 text-xs font-bold rounded-lg border bg-indigo-600 text-white shadow-xs cursor-pointer";
                 } else if (idx < activeCopiesData.length) {
-                    btn.className = "px-3 py-1.5 text-xs font-bold rounded-lg border border-gray-300 bg-white text-gray-700 shadow-xs cursor-pointer";
+                    btn.className = "px-3 py-1.5 text-xs font-semibold rounded-lg border border-gray-200 bg-white text-gray-700 shadow-xs cursor-pointer";
                 }
             });
 
-            document.getElementById('input-location').value = copy.location || "Living Room Main";
-            statusSelect.value = copy.status || "Available";
+            document.getElementById("input-location").value = copy.location || "Living Room Main";
+            document.getElementById("input-status").value = copy.status || "Available";
+            
+            const borrowerContainer = document.getElementById("borrower-input-container");
+            const borrowerInput = document.getElementById("input-borrower");
             if (copy.status === "Checked Out") {
-                borrowerContainer.classList.remove('hidden');
+                borrowerContainer.classList.remove("hidden");
                 borrowerInput.value = copy.borrower || "";
             } else {
-                borrowerContainer.classList.add('hidden');
+                borrowerContainer.classList.add("hidden");
                 borrowerInput.value = "";
             }
+
             if (copy.tags) {
-                copy.tags.split(', ').forEach(t => selectChipByVal(t));
+                copy.tags.split(", ").forEach(tagStr => {
+                    document.querySelectorAll(".tag-chip").forEach(chip => {
+                        if (chip.getAttribute("data-val") === tagStr) {
+                            chip.className = "tag-chip bg-indigo-600 text-white border border-indigo-600 px-3 py-1.5 text-xs font-medium rounded-xl transition-all cursor-pointer";
+                        }
+                    });
+                });
             }
         }
 
-        function setupNewCopyProfile(isbn) {
-            const nextCopyNum = activeCopiesData.length + 1;
-            selectedUniqueId = `${isbn}-${nextCopyNum}`;
-            copyBadgeIndicator.innerText = `Creating Profile: New Physical Copy Variant (${nextCopyNum})`;
+        function createNewCopyInstanceProfile() {
+            const nextIdx = activeCopiesData.length + 1;
+            selectedUniqueId = `${currentScannedBook.isbn}-${nextIdx}`;
+            document.getElementById("copy-badge-indicator").innerText = `Staging New Structural Record Target Variable: Copy ${nextIdx}`;
             
-            Array.from(copyButtonsList.children).forEach((btn, idx) => {
-                if(idx === activeCopiesData.length) {
-                    btn.className = "px-3 py-1.5 text-xs font-bold rounded-lg border bg-violet-700 text-white shadow-xs cursor-pointer";
+            const btnList = document.getElementById("copy-buttons-list").children;
+            Array.from(btnList).forEach((btn, idx) => {
+                if (idx === activeCopiesData.length) {
+                    btn.className = "px-3 py-1.5 text-xs font-bold rounded-lg border bg-indigo-600 text-white shadow-xs cursor-pointer";
                 } else {
-                    btn.className = "px-3 py-1.5 text-xs font-bold rounded-lg border border-gray-300 bg-white text-gray-700 shadow-xs cursor-pointer";
+                    btn.className = "px-3 py-1.5 text-xs font-semibold rounded-lg border border-gray-200 bg-white text-gray-700 shadow-xs cursor-pointer";
                 }
             });
-            resetFormFieldsForFreshCopy();
+
+            document.getElementById("input-location").value = "Living Room Main";
+            document.getElementById("input-status").value = "Available";
+            document.getElementById("borrower-input-container").classList.add("hidden");
+            document.getElementById("input-borrower").value = "";
+            resetTagChipsUI();
         }
 
-        function resetFormFieldsForFreshCopy() {
-            resetChips();
-            document.getElementById('input-location').value = "Living Room Main";
-            statusSelect.value = "Available";
-            borrowerContainer.classList.add('hidden');
-            borrowerInput.value = "";
+        function resetTagChipsUI() {
+            document.querySelectorAll(".tag-chip").forEach(chip => {
+                chip.className = "tag-chip bg-gray-50 text-gray-600 border border-gray-200/80 px-3 py-1.5 text-xs font-medium rounded-xl transition-all cursor-pointer";
+            });
         }
 
-        // Handle Submission Pipeline Synced up over Google Sheets Core Engine
-        document.getElementById('submit-to-sheet-btn').addEventListener('click', async () => {
+        // Processing Pipeline Sync Upload Sequences
+        async function submitDataToGoogleSheets() {
             if (!currentScannedBook) return;
 
-            // Bind current select option forms field values to current structural context
+            // Collect active form element variations values settings blocks
             currentScannedBook.uniqueId = selectedUniqueId;
-            currentScannedBook.location = document.getElementById('input-location').value;
-            currentScannedBook.status = statusSelect.value;
-            currentScannedBook.borrower = borrowerInput.value;
-            
-            const activeChips = Array.from(document.querySelectorAll('.tag-chip.bg-violet-600'));
-            currentScannedBook.tags = activeChips.map(chip => chip.getAttribute('data-val')).join(', ');
+            currentScannedBook.location = document.getElementById("input-location").value;
+            currentScannedBook.status = document.getElementById("input-status").value;
+            currentScannedBook.borrower = document.getElementById("input-borrower").value;
 
-            categoryModal.classList.add('hidden');
-            showStatus(`📤 Syncing row configuration profiles with Google Sheets...`, "info");
+            const selectedChips = Array.from(document.querySelectorAll(".tag-chip.bg-indigo-600"));
+            currentScannedBook.tags = selectedChips.map(c => c.getAttribute("data-val")).join(", ");
+
+            bookResult.innerHTML = "";
+            showStatus("Syncing row transaction references with Google Sheet engine...", "info");
 
             try {
-                // Post payload over to Google web app framework endpoint
                 await fetch(GOOGLE_SCRIPT_URL, {
                     method: "POST",
-                    mode: "no-cors", // Crucial block setup config bypass asset for safe apps script executions
+                    mode: "no-cors", 
                     headers: { "Content-Type": "application/json" },
                     body: JSON.stringify(currentScannedBook)
                 });
 
-                showStatus(`✅ Saved copy configuration: "${currentScannedBook.title}"`, "success");
-                logSessionItem(currentScannedBook);
+                showStatus(`Successfully synced configuration: "${currentScannedBook.title}"`, "success");
+                appendSessionHistoryLog(currentScannedBook);
                 currentScannedBook = null;
-            } catch (error) { 
-                showStatus(`🚨 Upload Integration Error: ${error.message}`, "error"); 
+            } catch (err) {
+                showStatus(`Spreadsheet sync transmission dropped: ${err.message}`, "error");
             }
-        });
-
-        function logSessionItem(book) {
-            const copyDisplayNum = book.uniqueId.split('-')[1] || "1";
-            const statusBadge = book.status === "Checked Out" ? `<span class="text-[9px] bg-red-100 text-red-800 px-1.5 py-0.5 rounded font-bold">Copy ${copyDisplayNum} Loaned to ${book.borrower}</span>` : `<span class="text-[9px] bg-green-100 text-green-800 px-1.5 py-0.5 rounded font-bold">Copy ${copyDisplayNum} Available</span>`;
-            const itemHTML = `
-                <div class="bg-white p-3 rounded-xl shadow-xs border border-gray-100 flex gap-4 items-center animate-fade-in">
-                    <img src="${book.thumbnail || 'https://images.unsplash.com/photo-1543002588-bfa74002ed7e?w=150'}" class="w-10 h-14 object-cover rounded">
-                    <div class="min-w-0 flex-1">
-                        <h3 class="font-bold text-gray-900 text-xs truncate">${book.title}</h3>
-                        <div class="flex gap-1.5 flex-wrap mt-1">
-                            ${statusBadge}
-                            <span class="text-[9px] bg-purple-50 text-purple-700 px-1.5 py-0.5 rounded font-bold">${book.location}</span>
-                        </div>
-                    </div>
-                </div>`;
-            sessionLog.insertAdjacentHTML('afterbegin', itemHTML);
         }
 
-        function showStatus(message, type) {
-            statusBox.classList.remove('hidden', 'bg-blue-50', 'text-blue-700', 'bg-green-50', 'text-green-700', 'bg-red-50', 'text-red-700');
-            if (type === "info") statusBox.classList.add('bg-blue-50', 'text-blue-700');
-            if (type === "success") statusBox.classList.add('bg-green-50', 'text-green-700');
-            if (type === "error") statusBox.classList.add('bg-red-50', 'text-red-700');
-            statusBox.innerText = message;
+        function appendSessionHistoryLog(book) {
+            historySection.classList.remove("hidden");
+            const copyDisplayNum = book.uniqueId.split("-")[1] || "1";
+            const statusLabel = book.status === "Checked Out" ? `<span class="text-[10px] bg-red-50 text-red-700 px-2 py-0.5 rounded-md font-semibold border border-red-100">Copy ${copyDisplayNum} Loaned to ${book.borrower}</span>` : `<span class="text-[10px] bg-green-50 text-green-700 px-2 py-0.5 rounded-md font-semibold border border-green-100">Copy ${copyDisplayNum} Available</span>`;
+            
+            const logItem = `
+                <div class="bg-white p-3 rounded-xl border border-gray-100 shadow-xs flex items-center gap-4 transition-all">
+                    <img src="${book.thumbnail}" class="w-10 h-14 object-cover rounded-lg flex-shrink-0 bg-gray-50 shadow-xs">
+                    <div class="min-w-0 flex-1 space-y-1">
+                        <h4 class="text-xs font-bold text-gray-900 truncate">${book.title}</h4>
+                        <div class="flex flex-wrap gap-1.5 items-center">
+                            ${statusLabel}
+                            <span class="text-[10px] bg-indigo-50 text-indigo-700 px-2 py-0.5 rounded-md font-semibold border border-indigo-100/50">${book.location}</span>
+                        </div>
+                    </div>
+                </div>
+            `;
+            sessionLog.insertAdjacentHTML("afterbegin", logItem);
         }
     </script>
 </body>
