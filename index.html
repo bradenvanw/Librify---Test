@@ -138,6 +138,7 @@
 
     <script>
         const GOOGLE_SCRIPT_URL = "https://script.google.com/macros/s/AKfycbzXf4pBhZaM0Md66fpgd8VC1BjrUQWlbo2WTUWUDdevJ4eOLZW6oCRuNivE_Yoe-8F-7A/exec";
+        const GOOGLE_BOOKS_API_KEY = "AIzaSyCPrABNnNk9KWMu5kS4cRc2DMPk3DGoNQI";
         
         const viewScanMode = document.getElementById("view-scan-mode");
         const viewSearchMode = document.getElementById("view-search-mode");
@@ -442,7 +443,7 @@
             // 2. Query Metadata Databases
             try { 
                 // Core Attempt: Google Books API API (with lowercased q=isbn: structure)
-                const googleUrl = `https://www.googleapis.com/books/v1/volumes?q=isbn:${cleanIsbn}&printType=books`;
+                const googleUrl = `https://www.googleapis.com/books/v1/volumes?q=isbn:${cleanIsbn}&printType=books&key=${GOOGLE_BOOKS_API_KEY}`;
                 const response = await fetch(googleUrl);
                 const searchResults = await response.json();
                 
