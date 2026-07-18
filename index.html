@@ -20,13 +20,20 @@
         let activeCopiesData = [];
         let selectedUniqueId = "";
 
-        // Auto-hook the manual search input typing event listener trigger
-        isbnInput.addEventListener("keyup", function(event) {
-            if (event.key === "Enter") {
-                const queryVal = isbnInput.value.trim().replace(/[-\s]/g, "");
-                if (queryVal) {
-                    checkExistingAndFetchMetadata(queryVal);
-                }
+       // Safe event hook that waits for the HTML element to actually exist
+        document.addEventListener("DOMContentLoaded", () => {
+            const inputElement = document.getElementById("isbn-input");
+            if (inputElement) {
+                inputElement.addEventListener("keyup", function(event) {
+                    if (event.key === "Enter") {
+                        const queryVal = inputElement.value.trim().replace(/[-\s]/g, "");
+                        if (queryVal) {
+                            checkExistingAndFetchMetadata(queryVal);
+                        }
+                    }
+                });
+            } else {
+                console.warn("Warning: Could not find an HTML element with id='isbn-input'");
             }
         });
 
