@@ -256,36 +256,36 @@
             `;
         }
         
-        // Clean teardown and initialization sequence
-        async function prepareNextScanCycle() {
-            // 1. Clear out any previous UI results or lingering state variables
+     async function prepareNextScanSession() {
+            bookResult.innerHTML = "";
             currentScannedBook = null;
+            isbnInput.value = "";
+            clearStatus();
             
-            // 2. Safely stop the camera if it is currently running or locked open
+            // Smoothly expand the layout wrapper frame back open
+            scannerSection.classList.remove("max-h-0", "opacity-0", "border-none");
+            scannerSection.classList.add("max-h-[500px]", "opacity-100", "border-2", "border-dashed");
+            
+            // Swap button state to "Close" while scanning is active
+            actionBtnContainer.innerHTML = `
+                <button id="toggle-scan-btn" onclick="toggleScanner()" 
+                    class="bg-gray-600 hover:bg-gray-700 text-white font-medium px-5 py-3 rounded-xl text-sm transition-colors shadow-sm cursor-pointer flex items-center justify-center gap-2 whitespace-nowrap">
+                    <span>Close Scanner</span>
+                </button>
+            `;
+            
+            // SAFETY HARDWARE RESET: Stop the lens completely before re-opening it
             if (html5QrcodeScanner) {
                 try {
-                    // Check if the scanner is currently active/attaching a stream
                     if (html5QrcodeScanner.isScanning) {
                         await html5QrcodeScanner.stop();
                     }
-                    console.log("Previous camera thread safely decommissioned.");
                 } catch (err) {
-                    // Suppress non-fatal cleanup warnings if the lens was already offline
-                    console.warn("Teardown note:", err);
+                    console.warn("Non-critical cleanup note:", err);
                 }
             }
-        
-            // 3. Reset the container UI layout to its original empty state
-            const resultElement = document.getElementById("book-result");
-            if (resultElement) {
-                resultElement.innerHTML = `
-                    <div class="bg-white rounded-2xl border border-dashed border-gray-200 p-8 text-center text-gray-400 text-sm">
-                        Ready to scan. Align a barcode inside the scanner viewport window.
-                    </div>
-                `;
-            }
-        
-            // 4. Now that hardware is completely free, execute your safe start function
+            
+            // Now that old pipeline links are cleanly broken, spin up the frame capture
             startScanning();
         }
         
