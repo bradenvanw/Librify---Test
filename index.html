@@ -121,14 +121,14 @@
                     </button>
                 </div>
                 
-                <!-- NEW: Horizontal Scrolling Quick-Filter Pill Container -->
+                <!-- Horizontal Scrolling Quick-Filter Pill Container -->
                 <div class="space-y-1.5">
                     <div class="text-[10px] font-bold text-gray-400 uppercase tracking-wider flex justify-between items-center">
                         <span>Quick Filters</span>
                         <button id="clear-filter-link" onclick="selectQuickFilterPill(this, '')" class="hidden text-indigo-600 font-semibold lowercase hover:underline">Clear Filter</button>
                     </div>
                     <div id="quick-filter-pills-row" class="flex gap-1.5 overflow-x-auto pb-1 no-scrollbar select-none">
-                        <!-- Populated dynamically via engine -->
+                        <!-- Populated dynamically -->
                     </div>
                 </div>
 
@@ -142,6 +142,7 @@
     </div>
 
     <script>
+        // ⚠️ PASTE YOUR COPIED GOOGLE APPS SCRIPT WEB APP URL DIRECTLY BELOW
         const GOOGLE_SCRIPT_URL = "https://script.google.com/macros/s/AKfycbxNxbhK6GWJyYchRiL0DTtwukG_XJZrjDrtpgO3ukbb7Izw667mk-EzteHoiMSrR5m1ZA/exec";
         
         // View Swapping Element Selectors
@@ -177,7 +178,7 @@
         let activeCopiesData = [];
         let selectedUniqueId = "";
         let globalCatalogCache = []; 
-        let activeSelectedCategoryFilter = ""; // Tracking variable for currently tapped pill filter
+        let activeSelectedCategoryFilter = ""; 
         
         let userTags = JSON.parse(localStorage.getItem("librify_tags")) || ["To Read", "Favorite", "Hardcover", "Borrowed"];
         let userLocations = JSON.parse(localStorage.getItem("librify_locations")) || ["Living Room Main", "Office Bookshelf", "Bedroom Table", "Unassigned / Pile"];
@@ -200,29 +201,25 @@
                 viewSearchMode.classList.remove("hidden");
                 tabScanMode.className = "flex-1 text-center py-2 text-xs font-bold rounded-lg text-gray-600 hover:text-gray-900 cursor-pointer";
                 tabSearchMode.className = "flex-1 text-center py-2 text-xs font-bold rounded-lg bg-white text-gray-800 shadow-xs cursor-pointer";
-                // Always render updated pills in case user modified their tags or locations lists while in scanner view
                 renderQuickFilterPillsModule();
                 if (globalCatalogCache.length === 0) fetchAllBooksFromGoogleSheet();
             }
         }
 
-        // --- NEW: GENERATE QUICK FILTER PILLS BAR ---
+        // Generate Quick Filter Pills
         function renderQuickFilterPillsModule() {
             quickFilterPillsRow.innerHTML = "";
             
-            // 1. "All" Pill
             const allBtn = createPillElement("✨ Show All", "");
             if (activeSelectedCategoryFilter === "") allBtn.classList.add("bg-indigo-600", "text-white", "border-indigo-600");
             quickFilterPillsRow.appendChild(allBtn);
 
-            // 2. Location Custom Pills
             userLocations.forEach(loc => {
                 const btn = createPillElement(`📍 ${loc}`, loc);
                 if (activeSelectedCategoryFilter === loc) btn.classList.add("bg-indigo-600", "text-white", "border-indigo-600");
                 quickFilterPillsRow.appendChild(btn);
             });
 
-            // 3. Tag Custom Pills
             userTags.forEach(tag => {
                 const btn = createPillElement(`🏷️ ${tag}`, tag);
                 if (activeSelectedCategoryFilter === tag) btn.classList.add("bg-indigo-600", "text-white", "border-indigo-600");
@@ -242,12 +239,10 @@
         function selectQuickFilterPill(selectedPill, filterVal) {
             activeSelectedCategoryFilter = filterVal;
             
-            // Clean active display formatting across all pills
             document.querySelectorAll(".quick-filter-pill").forEach(p => {
                 p.classList.remove("bg-indigo-600", "text-white", "border-indigo-600");
             });
 
-            // Handle clean resetting
             if (filterVal === "") {
                 clearFilterLink.classList.add("hidden");
                 const firstPill = quickFilterPillsRow.children[0];
@@ -260,40 +255,38 @@
             filterLocalCatalogCache();
         }
 
-        // --- FETCH ALL RECS FOR SEARCH MODE ---
+        // Fetch All Records For Search Mode
         async function fetchAllBooksFromGoogleSheet() {
             searchStatusMessage.innerText = "Syncing with live catalog database...";
             try {
                 const resp = await fetch(`${GOOGLE_SCRIPT_URL}?action=getAll`);
-                if (!resp.ok) throw new Error("Network connection structural disruption.");
+                if (!resp.ok) throw new Error("Network connection disruption.");
                 const data = await resp.json();
                 
                 globalCatalogCache = data.books || [];
                 searchStatusMessage.innerText = `Database synchronized: ${globalCatalogCache.length} asset entries cached.`;
                 filterLocalCatalogCache();
             } catch(e) {
-                searchStatusMessage.innerText = "Error matching tracking cache indices. Tap refresh to retry.";
+                searchStatusMessage.innerText = "Error tracking database. Tap refresh to retry.";
                 console.error(e);
             }
         }
 
-        // --- MODIFIED COMBINED TEXT & CATEGORY FILTER ENGINE ---
+        // Combined Text & Category Filtering Logic
         function filterLocalCatalogCache() {
             const query = searchQueryInput.value.toLowerCase().trim();
             const categoryFilter = activeSelectedCategoryFilter.toLowerCase();
             searchResultsList.innerHTML = "";
 
             const filtered = globalCatalogCache.filter(b => {
-                // Phase 1: Category Pill Filtering Check
+                // 1. Category Pill Checking
                 if (categoryFilter !== "") {
                     const matchLoc = b.location && b.location.toLowerCase() === categoryFilter;
-                    // Tag checking accounts for potential comma separated lists
                     const matchTag = b.tags && b.tags.toLowerCase().split(", ").includes(categoryFilter);
-                    
                     if (!matchLoc && !matchTag) return false;
                 }
 
-                // Phase 2: Text Search Box Narrowing Check
+                // 2. Text Search Checking
                 if (query === "") return true;
                 return (
                     (b.title && b.title.toLowerCase().includes(query)) ||
@@ -307,6 +300,7 @@
                 return;
             }
 
+            // Corrected Layout Fields Order Mapping 
             filtered.forEach(book => {
                 const isCheckedOut = book.status === "Checked Out";
                 const card = document.createElement("div");
@@ -319,12 +313,12 @@
                 };
 
                 card.innerHTML = `
-                    <div class="w-12 h-18 bg-gray-50 border rounded-md overflow-hidden flex-shrink-0">
-                        <img src="${book.thumbnail || 'https://images.unsplash.com/photo-1543002588-bfa74002ed7e?q=80&w=100'}" class="w-full h-full object-cover">
+                    <div class="w-12 h-18 bg-gray-50 border rounded-md overflow-hidden flex-shrink-0 shadow-2xs">
+                        <img src="${book.thumbnail || 'https://images.unsplash.com/photo-1543002588-bfa74002ed7e?q=80&w=100'}" class="w-full h-full object-cover" onerror="this.src='https://images.unsplash.com/photo-1543002588-bfa74002ed7e?q=80&w=100'">
                     </div>
                     <div class="flex-grow min-w-0 space-y-0.5">
-                        <h4 class="text-xs font-bold text-gray-900 truncate">${book.title}</h4>
-                        <p class="text-[11px] font-medium text-gray-500 truncate">by ${book.authors || 'Unknown'}</p>
+                        <h4 class="text-xs font-bold text-gray-900 truncate">${book.title || 'Untitled Book'}</h4>
+                        <p class="text-[11px] font-medium text-gray-500 truncate">by ${book.authors || 'Unknown Author'}</p>
                         <div class="flex items-center justify-between pt-1.5 gap-2">
                             <span class="text-[9px] bg-gray-100 font-semibold px-1.5 py-0.5 rounded text-gray-600 truncate max-w-[150px]">📍 ${book.location || 'Unassigned'}</span>
                             <span class="text-[9px] font-bold ${isCheckedOut ? 'text-red-600 bg-red-50' : 'text-emerald-600 bg-green-50'} px-1.5 py-0.5 rounded flex-shrink-0">
@@ -337,8 +331,76 @@
             });
         }
 
-        // --- RETAINED EXISTING EXTRANEOUS CONFIGURATION LOGIC ---
-        async function submitDataToGoogleSheets() { if (!currentScannedBook) return; currentScannedBook.uniqueId = selectedUniqueId; currentScannedBook.location = document.getElementById("input-location").value; currentScannedBook.status = document.getElementById("input-status").value; currentScannedBook.borrower = document.getElementById("input-borrower").value; const selectedChips = Array.from(document.querySelectorAll(".tag-chip.bg-indigo-600")); currentScannedBook.tags = selectedChips.map(c => c.getAttribute("data-val")).join(", "); const savedBookInstance = { ...currentScannedBook }; bookResult.innerHTML = `<div class="flex items-center justify-center py-12"><div class="animate-spin rounded-full h-8 w-8 border-b-2 border-indigo-600"></div></div>`; showStatus("Syncing row transaction references with Google Sheet...", "info"); try { const response = await fetch(GOOGLE_SCRIPT_URL, { method: "POST", headers: { "Content-Type": "text/plain;charset=utf-8" }, body: JSON.stringify(savedBookInstance) }); showStatus(`Successfully synced configuration: "${savedBookInstance.title}"`, "success"); appendSessionHistoryLog(savedBookInstance); fetchAllBooksFromGoogleSheet(); bookResult.innerHTML = `<div class="bg-white rounded-2xl border border-dashed border-gray-200 p-8 text-center text-gray-400 text-sm">🎉 Profile Synced!</div>`; currentScannedBook = null; } catch (err) { showStatus(`Spreadsheet sync error: ${err.message}`, "error"); renderIntegratedLayout(); } }
+        // Submit Records to Sheet
+        async function submitDataToGoogleSheets() { 
+            if (!currentScannedBook) return; 
+            currentScannedBook.uniqueId = selectedUniqueId; 
+            currentScannedBook.location = document.getElementById("input-location").value; 
+            currentScannedBook.status = document.getElementById("input-status").value; 
+            currentScannedBook.borrower = document.getElementById("input-borrower").value; 
+            const selectedChips = Array.from(document.querySelectorAll(".tag-chip.bg-indigo-600")); 
+            currentScannedBook.tags = selectedChips.map(c => c.getAttribute("data-val")).join(", "); 
+            
+            const savedBookInstance = { ...currentScannedBook }; 
+            bookResult.innerHTML = `<div class="flex items-center justify-center py-12"><div class="animate-spin rounded-full h-8 w-8 border-b-2 border-indigo-600"></div></div>`; 
+            showStatus("Syncing transactions with Google Sheet...", "info"); 
+            
+            try { 
+                const response = await fetch(GOOGLE_SCRIPT_URL, { 
+                    method: "POST", 
+                    headers: { "Content-Type": "text/plain;charset=utf-8" }, 
+                    body: JSON.stringify(savedBookInstance) 
+                }); 
+                showStatus(`Successfully synced configuration: "${savedBookInstance.title}"`, "success"); 
+                appendSessionHistoryLog(savedBookInstance); 
+                fetchAllBooksFromGoogleSheet(); 
+                bookResult.innerHTML = `<div class="bg-white rounded-2xl border border-dashed border-gray-200 p-8 text-center text-gray-400 text-sm">🎉 Profile Synced!</div>`; 
+                currentScannedBook = null; 
+            } catch (err) { 
+                showStatus(`Spreadsheet sync error: ${err.message}`, "error"); 
+                renderIntegratedLayout(); 
+            } 
+        }
+
+        // Safe Server-Side Metadata Lookup via Apps Script
+        async function checkExistingAndFetchMetadata(isbn) { 
+            clearStatus(); 
+            bookResult.innerHTML = `<div class="flex items-center justify-center py-12"><div class="animate-spin rounded-full h-8 w-8 border-b-2 border-indigo-600"></div><span class="ml-3 text-sm text-gray-500">Syncing profiles...</span></div>`; 
+            const cleanIsbn = isbn.trim().replace(/[-\s]/g, ""); 
+
+            try { 
+                const lookupResponse = await fetch(`${GOOGLE_SCRIPT_URL}?isbn=${cleanIsbn}`); 
+                if (!lookupResponse.ok) throw new Error("Backend server error."); 
+                
+                const lookupData = await lookupResponse.json(); 
+                activeCopiesData = lookupData.copies || []; 
+                const vol = lookupData.metadata; 
+
+                if (!vol) { 
+                    showStatus("No matching data found for this ISBN on Open Library.", "error"); 
+                    bookResult.innerHTML = ""; 
+                    return; 
+                } 
+
+                currentScannedBook = { 
+                    isbn: cleanIsbn, 
+                    title: vol.title || "Unknown Title", 
+                    authors: vol.authors ? vol.authors.map(a => a.name).join(", ") : "Unknown Author", 
+                    publisher: vol.publishers ? vol.publishers.map(p => p.name).join(", ") : "N/A", 
+                    date: vol.publish_date || "N/A", 
+                    thumbnail: vol.cover && vol.cover.large ? vol.cover.large : 'https://images.unsplash.com/photo-1543002588-bfa74002ed7e?q=80&w=300', 
+                    genre: vol.subjects ? vol.subjects[0].name : "General Reading", 
+                    pages: vol.number_of_pages ? `${vol.number_of_pages} pgs` : "N/A" 
+                }; 
+
+                showStatus("Book profile match successfully isolated!", "success"); 
+                renderIntegratedLayout(); 
+            } catch (err) { 
+                showStatus(`System exceptions: ${err.message}`, "error"); 
+                bookResult.innerHTML = ""; 
+            } 
+        }
+
         isbnInput.addEventListener("keyup", function(e) { if (e.key === "Enter") { const q = isbnInput.value.trim().replace(/[-\s]/g, ""); if (q) checkExistingAndFetchMetadata(q); } });
         function toggleAppSettingsPanel(id) { const targets = ['location-manager-panel', 'tag-manager-panel']; targets.forEach(t => { const el = document.getElementById(t); if (t === id) el.classList.toggle("hidden"); else el.classList.add("hidden"); }); }
         function renderLocationLibrarySettings() { locationLibraryList.innerHTML = ""; userLocations.forEach((l, i) => { const s = document.createElement("span"); s.className = "inline-flex items-center gap-1 bg-white border text-gray-700 text-xs px-2 py-1 rounded-md shadow-xs font-medium"; s.innerHTML = `<span>📍 ${l}</span><button onclick="deleteCustomUserLocation(${i})" class="text-gray-400 hover:text-red-500 font-bold ml-1 cursor-pointer">&times;</button>`; locationLibraryList.appendChild(s); }); localStorage.setItem("librify_locations", JSON.stringify(userLocations)); }
@@ -359,12 +421,12 @@
         function onScanFailure(e) {}
         function renderScanNextButtonState() { actionBtnContainer.innerHTML = `<button id="scan-next-btn" onclick="prepareNextScanSession()" class="bg-emerald-600 hover:bg-emerald-700 text-white font-semibold px-5 py-3 rounded-xl text-sm shadow-sm cursor-pointer flex items-center justify-center gap-2 whitespace-nowrap">⚡ <span>Scan Next Book</span></button>`; }
         function prepareNextScanSession() { bookResult.innerHTML = ""; currentScannedBook = null; isbnInput.value = ""; clearStatus(); scannerSection.classList.remove("max-h-0", "opacity-0", "border-none"); scannerSection.classList.add("max-h-[500px]", "opacity-100", "border-2", "border-dashed"); actionBtnContainer.innerHTML = `<button id="toggle-scan-btn" onclick="toggleScanner()" class="bg-gray-600 hover:bg-gray-700 text-white font-medium px-5 py-3 rounded-xl text-sm shadow-sm cursor-pointer flex items-center justify-center gap-2 whitespace-nowrap"><span>Close Scanner</span></button>`; startScanning(); }
-        async function checkExistingAndFetchMetadata(isbn) { clearStatus(); bookResult.innerHTML = `<div class="flex items-center justify-center py-12"><div class="animate-spin rounded-full h-8 w-8 border-b-2 border-indigo-600"></div><span class="ml-3 text-sm text-gray-500">Syncing profiles...</span></div>`; const cleanIsbn = isbn.trim().replace(/[-\s]/g, ""); try { const lookupResponse = await fetch(`${GOOGLE_SCRIPT_URL}?isbn=${cleanIsbn}`); const lookupData = await lookupResponse.json(); activeCopiesData = lookupData.copies || []; const apiUrl = `https://openlibrary.org/api/books?bibkeys=ISBN:${cleanIsbn}&jscmd=data&format=json`; const response = await fetch(apiUrl); if (!response.ok) throw new Error("Database reference mapping latency caught."); const data = await response.json(); const bookKey = `ISBN:${cleanIsbn}`; if (!data || !data[bookKey]) { showStatus("No matching structural data log found for this ISBN.", "error"); bookResult.innerHTML = ""; return; } const vol = data[bookKey]; currentScannedBook = { isbn: cleanIsbn, title: vol.title || "Unknown Title", authors: vol.authors ? vol.authors.map(a => a.name).join(", ") : "Unknown Author", publisher: vol.publishers ? vol.publishers.map(p => p.name).join(", ") : "N/A", date: vol.publish_date || "N/A", thumbnail: vol.cover && vol.cover.large ? vol.cover.large : 'https://images.unsplash.com/photo-1543002588-bfa74002ed7e?q=80&w=300', genre: vol.subjects ? vol.subjects[0].name : "General Reading", pages: vol.number_of_pages ? `${vol.number_of_pages} pgs` : "N/A" }; showStatus("Book profile match successfully isolated!", "success"); renderIntegratedLayout(); } catch (err) { showStatus(`System exceptions: ${err.message}`, "error"); bookResult.innerHTML = ""; } }
-        function renderIntegratedLayout() { bookResult.innerHTML = `<div class="bg-white rounded-2xl shadow-sm border border-gray-100 p-4 sm:p-6 flex flex-row gap-4 sm:gap-6 items-start"><div class="w-24 h-36 sm:w-32 sm:h-44 flex-shrink-0 bg-gray-100 rounded-xl overflow-hidden shadow-xs border border-gray-100"><img src="${currentScannedBook.thumbnail}" class="w-full h-full object-cover"></div><div class="space-y-1 sm:space-y-2 flex-grow min-w-0 text-left"><h2 class="text-base sm:text-xl font-bold text-gray-900 leading-snug truncate sm:whitespace-normal">${currentScannedBook.title}</h2><p class="text-xs sm:text-sm font-medium text-indigo-600 truncate">by ${currentScannedBook.authors}</p><div class="flex gap-1.5 mt-1"><span class="text-[9px] sm:text-[10px] bg-indigo-50 text-indigo-700 px-2 py-0.5 rounded font-semibold truncate max-w-[120px]">${currentScannedBook.genre}</span><span class="text-[9px] sm:text-[10px] bg-gray-100 text-gray-600 px-2 py-0.5 rounded font-semibold flex-shrink-0">${currentScannedBook.pages}</span></div><hr class="border-gray-100 my-2"><div class="grid grid-cols-2 gap-y-2 gap-x-2 text-[11px] text-gray-500"><div class="min-w-0"><span class="font-semibold text-gray-400 block text-[9px]">Publisher</span><span class="text-gray-700 font-medium block truncate">${currentScannedBook.publisher}</span></div><div class="min-w-0"><span class="font-semibold text-gray-400 block text-[9px]">Published</span><span class="text-gray-700 font-medium block truncate">${currentScannedBook.date}</span></div></div></div></div><div class="bg-white rounded-2xl shadow-sm border border-gray-100 p-5 space-y-4"><div class="bg-indigo-50/50 p-4 rounded-xl border border-indigo-100 space-y-2.5"><label class="block text-[11px] font-bold text-indigo-800 uppercase tracking-wider">Select Tracking Copy Instance</label><div id="copy-buttons-list" class="flex flex-wrap gap-2"></div><div id="copy-badge-indicator" class="text-xs font-medium text-indigo-600/90 italic pt-0.5"></div></div><div class="bg-gray-50 p-4 rounded-xl border border-gray-200 space-y-3"><div class="flex flex-col sm:flex-row sm:items-center justify-between gap-2"><label class="text-xs font-bold text-gray-600 uppercase tracking-wider">Availability Status</label><select id="input-status" class="bg-white border rounded-lg text-xs p-2 font-semibold"><option value="Available">🟢 Available</option><option value="Checked Out">🔴 Checked Out</option></select></div><div id="borrower-input-container" class="hidden space-y-1"><label class="block text-[11px] font-bold text-gray-400 uppercase tracking-wider">Borrower Identity Name</label><input type="text" id="input-borrower" placeholder="Enter name..." class="w-full bg-white border rounded-lg p-2.5 text-xs"></div></div><div class="space-y-1"><label class="block text-xs font-bold text-gray-600 uppercase tracking-wider">Storage Shelf Location Slot</label><select id="input-location" class="w-full bg-gray-50 border rounded-lg p-2.5 text-xs font-medium"></select></div><div class="space-y-1"><label class="block text-xs font-bold text-gray-600 uppercase tracking-wider">Collection Tracking Badges</label><div id="tag-chips-container" class="flex flex-wrap gap-2 pt-1"></div></div><button id="submit-to-sheet-btn" onclick="submitDataToGoogleSheets()" class="w-full bg-indigo-600 hover:bg-indigo-700 text-white font-semibold py-3 rounded-xl text-sm shadow-sm cursor-pointer mt-2">Confirm & Sync Data Records</button></div>`; setupFormInteractions(); }
+        
+        function renderIntegratedLayout() { bookResult.innerHTML = `<div class="bg-white rounded-2xl shadow-sm border border-gray-100 p-4 sm:p-6 flex flex-row gap-4 sm:gap-6 items-start"><div class="w-24 h-36 sm:w-32 sm:h-44 flex-shrink-0 bg-gray-100 rounded-xl overflow-hidden shadow-xs border border-gray-100"><img src="${currentScannedBook.thumbnail}" class="w-full h-full object-cover" onerror="this.src='https://images.unsplash.com/photo-1543002588-bfa74002ed7e?q=80&w=300'"></div><div class="space-y-1 sm:space-y-2 flex-grow min-w-0 text-left"><h2 class="text-base sm:text-xl font-bold text-gray-900 leading-snug truncate sm:whitespace-normal">${currentScannedBook.title}</h2><p class="text-xs sm:text-sm font-medium text-indigo-600 truncate">by ${currentScannedBook.authors}</p><div class="flex gap-1.5 mt-1"><span class="text-[9px] sm:text-[10px] bg-indigo-50 text-indigo-700 px-2 py-0.5 rounded font-semibold truncate max-w-[120px]">${currentScannedBook.genre}</span><span class="text-[9px] sm:text-[10px] bg-gray-100 text-gray-600 px-2 py-0.5 rounded font-semibold flex-shrink-0">${currentScannedBook.pages}</span></div><hr class="border-gray-100 my-2"><div class="grid grid-cols-2 gap-y-2 gap-x-2 text-[11px] text-gray-500"><div class="min-w-0"><span class="font-semibold text-gray-400 block text-[9px]">Publisher</span><span class="text-gray-700 font-medium block truncate">${currentScannedBook.publisher}</span></div><div class="min-w-0"><span class="font-semibold text-gray-400 block text-[9px]">Published</span><span class="text-gray-700 font-medium block truncate">${currentScannedBook.date}</span></div></div></div></div><div class="bg-white rounded-2xl shadow-sm border border-gray-100 p-5 space-y-4"><div class="bg-indigo-50/50 p-4 rounded-xl border border-indigo-100 space-y-2.5"><label class="block text-[11px] font-bold text-indigo-800 uppercase tracking-wider">Select Tracking Copy Instance</label><div id="copy-buttons-list" class="flex flex-wrap gap-2"></div><div id="copy-badge-indicator" class="text-xs font-medium text-indigo-600/90 italic pt-0.5"></div></div><div class="bg-gray-50 p-4 rounded-xl border border-gray-200 space-y-3"><div class="flex flex-col sm:flex-row sm:items-center justify-between gap-2"><label class="text-xs font-bold text-gray-600 uppercase tracking-wider">Availability Status</label><select id="input-status" class="bg-white border rounded-lg text-xs p-2 font-semibold"><option value="Available">🟢 Available</option><option value="Checked Out">🔴 Checked Out</option></select></div><div id="borrower-input-container" class="hidden space-y-1"><label class="block text-[11px] font-bold text-gray-400 uppercase tracking-wider">Borrower Identity Name</label><input type="text" id="input-borrower" placeholder="Enter name..." class="w-full bg-white border rounded-lg p-2.5 text-xs"></div></div><div class="space-y-1"><label class="block text-xs font-bold text-gray-600 uppercase tracking-wider">Storage Shelf Location Slot</label><select id="input-location" class="w-full bg-gray-50 border rounded-lg p-2.5 text-xs font-medium"></select></div><div class="space-y-1"><label class="block text-xs font-bold text-gray-600 uppercase tracking-wider">Collection Tracking Badges</label><div id="tag-chips-container" class="flex flex-wrap gap-2 pt-1"></div></div><button id="submit-to-sheet-btn" onclick="submitDataToGoogleSheets()" class="w-full bg-indigo-600 hover:bg-indigo-700 text-white font-semibold py-3 rounded-xl text-sm shadow-sm cursor-pointer mt-2">Confirm & Sync Data Records</button></div>`; setupFormInteractions(); }
         function toggleChipState(c) { c.classList.toggle("bg-gray-50"); c.classList.toggle("text-gray-600"); c.classList.toggle("border-gray-200/80"); c.classList.toggle("bg-indigo-600"); c.classList.toggle("text-white"); c.classList.toggle("border-indigo-600"); if (c.classList.contains("bg-indigo-600")) c.innerText = `🏷️ ${c.getAttribute("data-val")}`; else c.innerText = `➕ ${c.getAttribute("data-val")}`; }
         function setupFormInteractions() { const s = document.getElementById("input-status"); const bc = document.getElementById("borrower-input-container"); const bi = document.getElementById("input-borrower"); const cbl = document.getElementById("copy-buttons-list"); const cbi = document.getElementById("copy-badge-indicator"); s.addEventListener("change", () => { if (s.value === "Checked Out") bc.classList.remove("hidden"); else { bc.classList.add("hidden"); bi.value = ""; } }); refreshActiveFormLocationDropdown(); refreshActiveFormTagChips(); if (activeCopiesData.length > 0) { activeCopiesData.forEach((copy, idx) => { const btn = document.createElement("button"); btn.type = "button"; const em = copy.status === "Checked Out" ? "🔴" : "🟢"; btn.className = "px-3 py-1.5 text-xs font-semibold rounded-lg border bg-white shadow-xs cursor-pointer"; btn.innerText = `Copy ${idx + 1} ${em}`; btn.onclick = () => loadSelectedCopyProfile(idx); cbl.appendChild(btn); }); const ab = document.createElement("button"); ab.type = "button"; ab.className = "px-3 py-1.5 text-xs font-bold rounded-lg border-2 border-dashed border-indigo-400 text-indigo-600 bg-indigo-50/40 cursor-pointer"; ab.innerText = "+ Add Copy"; ab.onclick = () => createNewCopyInstanceProfile(); cbl.appendChild(ab); loadSelectedCopyProfile(0); } else { selectedUniqueId = `${currentScannedBook.isbn}-1`; cbi.innerText = "Creating initial profile (Copy 1)"; } }
         function loadSelectedCopyProfile(i) { resetTagChipsUI(); const c = activeCopiesData[i]; selectedUniqueId = c.uniqueId; document.getElementById("copy-badge-indicator").innerText = `Modifying: Copy ${i + 1} (${selectedUniqueId})`; const bl = document.getElementById("copy-buttons-list").children; Array.from(bl).forEach((b, idx) => { if (idx === i) b.className = "px-3 py-1.5 text-xs font-bold rounded-lg border bg-indigo-600 text-white shadow-xs cursor-pointer"; else if (idx < activeCopiesData.length) b.className = "px-3 py-1.5 text-xs font-semibold rounded-lg border bg-white text-gray-700 shadow-xs cursor-pointer"; }); if (userLocations.includes(c.location)) document.getElementById("input-location").value = c.location; else if (userLocations.length > 0) document.getElementById("input-location").value = userLocations[0]; document.getElementById("input-status").value = c.status || "Available"; const bc = document.getElementById("borrower-input-container"); const bi = document.getElementById("input-borrower"); if (c.status === "Checked Out") { bc.classList.remove("hidden"); bi.value = c.borrower || ""; } else { bc.classList.add("hidden"); bi.value = ""; } if (c.tags) { c.tags.split(", ").forEach(ts => { document.querySelectorAll(".tag-chip").forEach(ch => { if (ch.getAttribute("data-val") === ts) { ch.className = "tag-chip bg-indigo-600 text-white border border-indigo-600 px-3 py-1.5 text-xs font-medium rounded-xl cursor-pointer"; ch.innerText = `🏷️ ${ts}`; } }); }); } }
-        function createNewCopyInstanceProfile() { const ni = activeCopiesData.length + 1; selectedUniqueId = `${currentScannedBook.isbn}-${ni}`; document.getElementById("copy-badge-indicator").innerText = `Staging New: Copy ${ni}`; const bl = document.getElementById("copy-buttons-list").children; Array.from(bl).forEach((b, idx) => { if (idx === activeCopiesData.length) b.className = "px-3 py-1.5 text-xs font-bold rounded-lg border bg-indigo-600 text-white shadow-xs cursor-pointer"; else b.className = "px-3 py-1.5 text-xs font-semibold rounded-lg border bg-white text-gray-700 shadow-xs cursor-pointer"; }); if (userLocations.length > 0) document.getElementById("input-location").value = userLocations[0]; document.getElementById("input-status").value = "Available"; document.getElementById("borrower-input-container").classList.add("hidden"); document.getElementById("input-borrower").value = ""; resetTagChipsUI(); }
+        function createNewCopyInstanceProfile() { const ni = activeCopiesData.length + 1; selectedUniqueId = `${currentScannedBook.isbn}-ni`; document.getElementById("copy-badge-indicator").innerText = `Staging New: Copy ${ni}`; const bl = document.getElementById("copy-buttons-list").children; Array.from(bl).forEach((b, idx) => { if (idx === activeCopiesData.length) b.className = "px-3 py-1.5 text-xs font-bold rounded-lg border bg-indigo-600 text-white shadow-xs cursor-pointer"; else b.className = "px-3 py-1.5 text-xs font-semibold rounded-lg border bg-white text-gray-700 shadow-xs cursor-pointer"; }); if (userLocations.length > 0) document.getElementById("input-location").value = userLocations[0]; document.getElementById("input-status").value = "Available"; document.getElementById("borrower-input-container").classList.add("hidden"); document.getElementById("input-borrower").value = ""; resetTagChipsUI(); }
         function resetTagChipsUI() { document.querySelectorAll(".tag-chip").forEach(ch => { ch.className = "tag-chip bg-gray-50 text-gray-600 border border-gray-200/80 px-3 py-1.5 text-xs font-medium rounded-xl cursor-pointer"; ch.innerText = `➕ ${ch.getAttribute("data-val")}`; }); }
         function appendSessionHistoryLog(b) { historySection.classList.remove("hidden"); const c = b.uniqueId.split("-")[1] || "1"; const sl = b.status === "Checked Out" ? `<span class="text-red-600 font-semibold">Checked Out</span>` : `<span class="text-emerald-600 font-semibold">Available</span>`; const li = document.createElement("div"); li.className = "bg-white border rounded-xl p-3 flex justify-between items-center text-xs shadow-xs"; li.innerHTML = `<div><p class="font-bold text-gray-800">${b.title}</p><p class="text-gray-400 mt-0.5">Copy ${c} • ${b.location}</p></div><div class="text-right">${sl}</div>`; sessionLog.prepend(li); }
     </script>
