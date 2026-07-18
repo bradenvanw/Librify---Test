@@ -1,4 +1,59 @@
-<!-- Main Core Business Script Execution Block -->
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Personal Library Tracker</title>
+    <!-- Tailwind CSS for Beautiful Styling -->
+    <script src="https://cdn.jsdelivr.net/npm/@tailwindcss/browser@4"></script>
+    <!-- Html5-Qrcode Library for Camera Scanning -->
+    <script src="https://unpkg.com/html5-qrcode"></script>
+</head>
+<body class="bg-gray-50 min-h-screen text-gray-800 antialiased pb-12">
+
+    <!-- Container Wrap -->
+    <div class="max-w-md mx-auto px-4 pt-6 space-y-6">
+        
+        <!-- Header Section -->
+        <header class="text-center py-4">
+            <h1 class="text-2xl font-black text-gray-900 tracking-tight flex items-center justify-center gap-2">
+                📚 Library Cataloger
+            </h1>
+            <p class="text-xs text-gray-500 font-medium mt-1">Scan barcodes or type ISBNs to sync with Google Sheets</p>
+        </header>
+
+        <!-- Search / Scan Controls Panel -->
+        <div class="bg-white rounded-2xl shadow-sm border border-gray-100 p-4 space-y-3">
+            <div class="flex gap-2">
+                <input type="text" id="isbn-input" placeholder="Type ISBN manually + hit Enter..." 
+                    class="flex-1 bg-gray-50 border border-gray-200 rounded-xl px-4 py-3 text-sm font-medium focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:bg-white transition-all" />
+                
+                <button id="toggle-scan-btn" class="bg-indigo-600 hover:bg-indigo-700 text-white font-medium px-5 py-3 rounded-xl text-sm transition-colors shadow-sm cursor-pointer flex items-center justify-center gap-2">
+                    📷 Open Scanner
+                </button>
+            </div>
+        </div>
+
+        <!-- Camera Scanner Section (Hidden by Default) -->
+        <div id="scanner-section" class="hidden bg-black rounded-2xl overflow-hidden shadow-inner relative border border-gray-800">
+            <div id="interactive-reader" class="w-full"></div>
+        </div>
+
+        <!-- Dynamic Feedback Logging Toast Box -->
+        <div id="status-log" class="hidden"></div>
+
+        <!-- Dynamic Target Area: Scanned Book and Forms Load Here -->
+        <div id="book-result" class="space-y-4"></div>
+
+        <!-- Recent Session Sync History Shell -->
+        <div id="history-section" class="hidden space-y-2.5">
+            <h3 class="text-xs font-bold text-gray-400 uppercase tracking-wider pl-1">Recently Synced This Session</h3>
+            <div id="session-log" class="space-y-2"></div>
+        </div>
+
+    </div>
+
+    <!-- Main Core Business Script Execution Block -->
     <script>
         // =========================================================================
         // !!! PASTE YOUR GOOGLE APPS SCRIPT WEB APP EXTENSION URL API LINK HERE !!!
@@ -390,7 +445,7 @@
 
         function createNewCopyInstanceProfile() {
             const nextIdx = activeCopiesData.length + 1;
-            selectedUniqueId = `${currentScannedBook.isbn}-${nextIdx}`;
+            selectedUniqueId = `${currentScannedBook.isbn}-nextIdx`;
             
             const copyBadgeIndicator = document.getElementById("copy-badge-indicator");
             if (copyBadgeIndicator) {
@@ -492,3 +547,5 @@
             sessionLog.insertAdjacentHTML("afterbegin", logItem);
         }
     </script>
+</body>
+</html>
