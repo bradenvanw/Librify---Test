@@ -155,39 +155,35 @@
 
                 // A robust function to initialize a perfectly fresh scanner configuration
         function startScanning() {
-            // 1. HARD WIPE: Purge any left-over video, canvas, or hidden div tags from previous sessions
             const readerElement = document.getElementById("interactive-reader");
             if (readerElement) {
-                readerElement.innerHTML = "";
+                readerElement.innerHTML = ""; // Hard wipe the wrapper container UI elements
             }
         
-            // 2. Build a brand new instance on a clean element canvas
-            html5QrcodeScanner = new Html5Qrcode("interactive-reader");
+            // Only instantiate fresh architecture if old references are dead
+            if (!html5QrcodeScanner || !html5QrcodeScanner.isScanning) {
+                html5QrcodeScanner = new Html5Qrcode("interactive-reader");
+            }
         
-            // 3. EXPLICITLY pass formatting constraints so the engine knows what to decode on launch
             const config = {
                 fps: 10,
                 qrbox: function(width, height) {
-                    // Perfect horizontal tracking rectangle profile for long book barcodes
                     return { width: Math.floor(width * 0.8), height: Math.floor(height * 0.4) };
                 },
-                // Enforce barcode processing specifically
                 formatsToSupport: [ 
                     Html5QrcodeSupportedFormats.EAN_13, 
-                    Html5QrcodeSupportedFormats.EAN_8, 
-                    Html5QrcodeSupportedFormats.ISBN_13 
+                    Html5QrcodeSupportedFormats.EAN_8 
                 ]
             };
         
-            // 4. Start the hardware lens pipeline
             html5QrcodeScanner.start(
                 { facingMode: "environment" },
                 config,
                 onScanSuccess,
                 onScanFailure
             ).catch(err => {
-                console.error("Failed to re-engage active camera lens:", err);
-                showStatus("Camera failure. Please try refreshing the app.", "error");
+                console.error("Camera failed to lock on initialization hook:", err);
+                showStatus("Camera failure. Tap 'Scan Next Book' again to force re-attach.", "error");
             });
         }
         
@@ -260,27 +256,39 @@
             `;
         }
         
-        function prepareNextScanSession() {
-            bookResult.innerHTML = "";
+        // Clean teardown and initialization sequence
+        async function prepareNextScanCycle() {
+            // 1. Clear out any previous UI results or lingering state variables
             currentScannedBook = null;
-            isbnInput.value = "";
-            clearStatus();
             
-            // Open layout wrapper frame
-            scannerSection.classList.remove("max-h-0", "opacity-0", "border-none");
-            scannerSection.classList.add("max-h-[500px]", "opacity-100", "border-2", "border-dashed");
-            
-            actionBtnContainer.innerHTML = `
-                <button id="toggle-scan-btn" onclick="toggleScanner()" 
-                    class="bg-gray-600 hover:bg-gray-700 text-white font-medium px-5 py-3 rounded-xl text-sm transition-colors shadow-sm cursor-pointer flex items-center justify-center gap-2 whitespace-nowrap">
-                    <span>Close Scanner</span>
-                </button>
-            `;
-            
-            // Fire up our updated, safe initialization function
+            // 2. Safely stop the camera if it is currently running or locked open
+            if (html5QrcodeScanner) {
+                try {
+                    // Check if the scanner is currently active/attaching a stream
+                    if (html5QrcodeScanner.isScanning) {
+                        await html5QrcodeScanner.stop();
+                    }
+                    console.log("Previous camera thread safely decommissioned.");
+                } catch (err) {
+                    // Suppress non-fatal cleanup warnings if the lens was already offline
+                    console.warn("Teardown note:", err);
+                }
+            }
+        
+            // 3. Reset the container UI layout to its original empty state
+            const resultElement = document.getElementById("book-result");
+            if (resultElement) {
+                resultElement.innerHTML = `
+                    <div class="bg-white rounded-2xl border border-dashed border-gray-200 p-8 text-center text-gray-400 text-sm">
+                        Ready to scan. Align a barcode inside the scanner viewport window.
+                    </div>
+                `;
+            }
+        
+            // 4. Now that hardware is completely free, execute your safe start function
             startScanning();
         }
-
+        
         async function checkExistingAndFetchMetadata(isbn) {
             clearStatus();
             bookResult.innerHTML = `
