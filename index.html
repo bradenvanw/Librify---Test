@@ -196,7 +196,6 @@
         let userLocations = JSON.parse(localStorage.getItem("librify_locations")) || ["Living Room Main", "Office Bookshelf", "Bedroom Table", "Unassigned / Pile"];
         let userTags = JSON.parse(localStorage.getItem("librify_tags")) || ["To Read", "Favorite", "Hardcover", "Borrowed"];
 
-        // Visibility tracking maps for filter layout rendering
         let visibleLocationFilters = JSON.parse(localStorage.getItem("librify_visible_locs")) || userLocations;
         let visibleTagFilters = JSON.parse(localStorage.getItem("librify_visible_tags")) || userTags;
 
@@ -208,12 +207,10 @@
         function switchAppMode(mode) {
             stopScanning();
             
-            // Toggle view panels
             viewScanMode.classList.toggle("hidden", mode !== 'scan');
             viewSearchMode.classList.toggle("hidden", mode !== 'search');
             viewSettingsMode.classList.toggle("hidden", mode !== 'settings');
 
-            // Apply style classes dynamically
             tabSearchMode.className = mode === 'search' 
                 ? "flex-1 text-center py-2 text-xs font-bold rounded-lg bg-white text-gray-800 shadow-xs cursor-pointer transition-all" 
                 : "flex-1 text-center py-2 text-xs font-bold rounded-lg text-gray-600 hover:text-gray-900 cursor-pointer transition-all";
@@ -410,7 +407,6 @@
                 bookResult.innerHTML = `<div class="bg-white rounded-2xl border border-dashed border-gray-200 p-8 text-center text-gray-400 text-sm">🎉 Profile Synced!</div>`; 
                 currentScannedBook = null; 
 
-                // Route the view container back to the live search screen automatically
                 setTimeout(() => {
                     switchAppMode('search');
                     clearStatus();
@@ -423,7 +419,6 @@
 
         async function checkExistingAndFetchMetadata(isbn, cachedBookData = null) { 
             clearStatus(); 
-            switchAppMode('scan');
             
             bookResult.innerHTML = `<div class="flex items-center justify-center py-12"><div class="animate-spin rounded-full h-8 w-8 border-b-2 border-indigo-600"></div><span class="ml-3 text-sm text-gray-500">Searching networks...</span></div>`; 
             
@@ -505,9 +500,8 @@
             } 
         }
         
-        isbnInput.addEventListener("keyup", function(e) { if (e.key === "Enter") { const q = isbnInput.value.trim().replace(/[^0-9X]/gi, ""); if (q) checkExistingAndFetchMetadata(q); } });
+        isbnInput.addEventListener("keyup", function(e) { if (e.key === "Enter") { const q = isbnInput.value.trim().replace(/[^0-9X]/gi, ""); if (q) { switchAppMode('scan'); checkExistingAndFetchMetadata(q); } } });
         
-        // Location Management & Filter Toggling
         function renderLocationLibrarySettings() { 
             locationLibraryList.innerHTML = ""; 
             userLocations.forEach((l, i) => { 
@@ -543,7 +537,7 @@
             const v = newLocationInput.value.trim(); 
             if (v && !userLocations.includes(v)) { 
                 userLocations.push(v); 
-                visibleLocationFilters.push(v); // Auto-display new locations as quick filters
+                visibleLocationFilters.push(v); 
                 newLocationInput.value = ""; 
                 renderLocationLibrarySettings(); 
             } 
@@ -556,7 +550,6 @@
             renderLocationLibrarySettings(); 
         }
 
-        // Tag Management & Filter Toggling
         function renderTagLibrarySettings() { 
             tagLibraryList.innerHTML = ""; 
             userTags.forEach((t, i) => { 
@@ -592,7 +585,7 @@
             const v = newTagInput.value.trim(); 
             if (v && !userTags.includes(v)) { 
                 userTags.push(v); 
-                visibleTagFilters.push(v); // Auto-display new tags as quick filters
+                visibleTagFilters.push(v); 
                 newTagInput.value = ""; 
                 renderTagLibrarySettings(); 
             } 
@@ -645,7 +638,9 @@
                 scannerSection.classList.add("max-h-[500px]", "opacity-100", "border-2", "border-dashed"); 
                 toggleScanBtn.innerText = "Close Scanner"; 
                 toggleScanBtn.classList.replace("bg-indigo-600", "bg-gray-600"); 
-                setTimeout(() => { startScanning(); }, 300);
+                
+                // Allow CSS transition animation to finish rendering before asking for the camera handle
+                setTimeout(() => { startScanning(); }, 350);
             } else { 
                 stopScanning(); 
             } 
@@ -653,11 +648,25 @@
 
         function startScanning() { 
             const re = document.getElementById("interactive-reader"); 
-            if (re) re.innerHTML = ""; 
-            if (html5QrcodeScanner) { try { html5QrcodeScanner.clear(); } catch(e) {} }
+            if (!re) return;
+            re.innerHTML = ""; 
+            
+            if (html5QrcodeScanner) { 
+                try { html5QrcodeScanner.clear(); } catch(e) {} 
+            }
+            
             html5QrcodeScanner = new Html5Qrcode("interactive-reader"); 
-            const config = { fps: 10, qrbox: function(w, h) { return { width: Math.floor(w * 0.8), height: Math.floor(h * 0.4) }; }, formatsToSupport: [ Html5QrcodeSupportedFormats.EAN_13, Html5QrcodeSupportedFormats.EAN_8, Html5QrcodeSupportedFormats.ISBN_13 ] }; 
-            html5QrcodeScanner.start({ facingMode: "environment" }, config, onScanSuccess, onScanFailure).catch(err => { console.error(err); showStatus("Camera failure.", "error"); }); 
+            const config = { 
+                fps: 10, 
+                qrbox: function(w, h) { return { width: Math.floor(w * 0.8), height: Math.floor(h * 0.4) }; }, 
+                formatsToSupport: [ Html5QrcodeSupportedFormats.EAN_13, Html5QrcodeSupportedFormats.EAN_8, Html5QrcodeSupportedFormats.ISBN_13 ] 
+            }; 
+            
+            html5QrcodeScanner.start({ facingMode: "environment" }, config, onScanSuccess, onScanFailure)
+                .catch(err => { 
+                    console.error("Camera Init Error:", err); 
+                    showStatus("Camera permissions denied or unavailable.", "error"); 
+                }); 
         }
 
         function stopScanning() { 
@@ -668,7 +677,11 @@
             } 
         }
 
-        function resetScannerUIState() { scannerSection.classList.remove("max-h-[500px]", "opacity-100", "border-2", "border-dashed"); scannerSection.classList.add("max-h-0", "opacity-0", "border-none"); actionBtnContainer.innerHTML = `<button id="toggle-scan-btn" onclick="toggleScanner()" class="bg-indigo-600 hover:bg-indigo-700 text-white font-medium px-5 py-3 rounded-xl text-sm transition-colors shadow-sm cursor-pointer flex items-center justify-center gap-2 whitespace-nowrap"><span>Open Scanner</span></button>`; }
+        function resetScannerUIState() { 
+            scannerSection.classList.remove("max-h-[500px]", "opacity-100", "border-2", "border-dashed"); 
+            scannerSection.classList.add("max-h-0", "opacity-0", "border-none"); 
+            actionBtnContainer.innerHTML = `<button id="toggle-scan-btn" onclick="toggleScanner()" class="bg-indigo-600 hover:bg-indigo-700 text-white font-medium px-5 py-3 rounded-xl text-sm transition-colors shadow-sm cursor-pointer flex items-center justify-center gap-2 whitespace-nowrap"><span>Open Scanner</span></button>`; 
+        }
         
         function onScanSuccess(dt) { 
             if (scannerSection.classList.contains("max-h-0")) return; 
@@ -683,8 +696,24 @@
         }
         
         function onScanFailure(e) {}
-        function renderScanNextButtonState() { actionBtnContainer.innerHTML = `<button id="scan-next-btn" onclick="prepareNextScanSession()" class="bg-emerald-600 hover:bg-emerald-700 text-white font-semibold px-5 py-3 rounded-xl text-sm shadow-sm cursor-pointer flex items-center justify-center gap-2 whitespace-nowrap">⚡ <span>Scan Next Book</span></button>`; }
-        function prepareNextScanSession() { bookResult.innerHTML = ""; currentScannedBook = null; isbnInput.value = ""; clearStatus(); scannerSection.classList.remove("max-h-0", "opacity-0", "border-none"); scannerSection.classList.add("max-h-[500px]", "opacity-100", "border-2", "border-dashed"); actionBtnContainer.innerHTML = `<button id="toggle-scan-btn" onclick="toggleScanner()" class="bg-gray-600 hover:bg-gray-700 text-white font-medium px-5 py-3 rounded-xl text-sm shadow-sm cursor-pointer flex items-center justify-center gap-2 whitespace-nowrap"><span>Close Scanner</span></button>`; startScanning(); }
+        
+        function renderScanNextButtonState() { 
+            actionBtnContainer.innerHTML = `<button id="scan-next-btn" onclick="prepareNextScanSession()" class="bg-emerald-600 hover:bg-emerald-700 text-white font-semibold px-5 py-3 rounded-xl text-sm shadow-sm cursor-pointer flex items-center justify-center gap-2 whitespace-nowrap">⚡ <span>Scan Next Book</span></button>`; 
+        }
+        
+        function prepareNextScanSession() { 
+            bookResult.innerHTML = ""; 
+            currentScannedBook = null; 
+            isbnInput.value = ""; 
+            clearStatus(); 
+            
+            scannerSection.classList.remove("max-h-0", "opacity-0", "border-none"); 
+            scannerSection.classList.add("max-h-[500px]", "opacity-100", "border-2", "border-dashed"); 
+            actionBtnContainer.innerHTML = `<button id="toggle-scan-btn" onclick="toggleScanner()" class="bg-gray-600 hover:bg-gray-700 text-white font-medium px-5 py-3 rounded-xl text-sm shadow-sm cursor-pointer flex items-center justify-center gap-2 whitespace-nowrap"><span>Close Scanner</span></button>`; 
+            
+            setTimeout(() => { startScanning(); }, 350); 
+        }
+        
         function toggleChipState(c) { c.classList.toggle("bg-gray-50"); c.classList.toggle("text-gray-600"); c.classList.toggle("border-gray-200/80"); c.classList.toggle("bg-indigo-600"); c.classList.toggle("text-white"); c.classList.toggle("border-indigo-600"); if (c.classList.contains("bg-indigo-600")) c.innerText = `🏷️ ${c.getAttribute("data-val")}`; else c.innerText = `➕ ${c.getAttribute("data-val")}`; }
 
         function renderIntegratedLayout() { 
@@ -832,7 +861,7 @@
 
         function createNewCopyInstanceProfile() { 
             const ni = activeCopiesData.length + 1; 
-            selectedUniqueId = `${currentScannedBook.isbn}-${ni}`; 
+            selectedUniqueId = `${currentScannedBook.isbn}-ni`; 
             document.getElementById("copy-badge-indicator").innerText = `Staging New: Copy ${ni}`; 
             const bl = document.getElementById("copy-buttons-list").children; 
             Array.from(bl).forEach((b, idx) => { 
