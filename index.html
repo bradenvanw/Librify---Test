@@ -64,7 +64,7 @@
                 </div>
             </div>
 
-            <!-- Interactive Camera Scanner Window (Updated to use height/overflow wrapper) -->
+            <!-- Interactive Camera Scanner Window -->
             <div id="scanner-section" class="max-h-0 opacity-0 overflow-hidden border-gray-200 rounded-2xl bg-gray-50 transition-all duration-300 ease-in-out">
                 <div class="p-3">
                     <div id="interactive-reader" class="w-full mx-auto"></div>
@@ -137,11 +137,9 @@
         }
 
         function toggleScanner() {
-            // Check if the scanner window is currently collapsed
             if (scannerSection.classList.contains("max-h-0")) {
                 bookResult.innerHTML = ""; 
                 
-                // Open the container smoothly
                 scannerSection.classList.remove("max-h-0", "opacity-0", "border-none");
                 scannerSection.classList.add("max-h-[500px]", "opacity-100", "border-2", "border-dashed");
                 
@@ -153,25 +151,19 @@
             }
         }
 
-                // A robust function to initialize a perfectly fresh scanner configuration
         function startScanning() {
-            // 1. HARD WIPE: Purge any left-over video, canvas, or hidden div tags from previous sessions
             const readerElement = document.getElementById("interactive-reader");
             if (readerElement) {
                 readerElement.innerHTML = "";
             }
         
-            // 2. Build a brand new instance on a clean element canvas
             html5QrcodeScanner = new Html5Qrcode("interactive-reader");
         
-            // 3. EXPLICITLY pass formatting constraints so the engine knows what to decode on launch
             const config = {
                 fps: 10,
                 qrbox: function(width, height) {
-                    // Perfect horizontal tracking rectangle profile for long book barcodes
                     return { width: Math.floor(width * 0.8), height: Math.floor(height * 0.4) };
                 },
-                // Enforce barcode processing specifically
                 formatsToSupport: [ 
                     Html5QrcodeSupportedFormats.EAN_13, 
                     Html5QrcodeSupportedFormats.EAN_8, 
@@ -179,7 +171,6 @@
                 ]
             };
         
-            // 4. Start the hardware lens pipeline
             html5QrcodeScanner.start(
                 { facingMode: "environment" },
                 config,
@@ -205,7 +196,6 @@
         }
         
         function resetScannerUIState() {
-            // Collapse the container smoothly without using display: none
             scannerSection.classList.remove("max-h-[500px]", "opacity-100", "border-2", "border-dashed");
             scannerSection.classList.add("max-h-0", "opacity-0", "border-none");
             
@@ -218,16 +208,13 @@
         }
 
         function onScanSuccess(decodedText) {
-            // Drop execution context if the layout window is tucked away
             if (scannerSection.classList.contains("max-h-0")) return;
             
             isbnInput.value = decodedText;
             
-            // Shut down the layout box instantly
             scannerSection.classList.remove("max-h-[500px]", "opacity-100", "border-2", "border-dashed");
             scannerSection.classList.add("max-h-0", "opacity-0", "border-none");
             
-            // Tear down the instance immediately so it frees up everything
             if (html5QrcodeScanner) {
                 html5QrcodeScanner.stop()
                     .then(() => {
@@ -247,9 +234,7 @@
             }
         }
 
-        function onScanFailure(error) {
-            // Silently handle normal frame analysis misses to avoid console bloat
-        }
+        function onScanFailure(error) {}
         
         function renderScanNextButtonState() {
             actionBtnContainer.innerHTML = `
@@ -266,7 +251,6 @@
             isbnInput.value = "";
             clearStatus();
             
-            // Open layout wrapper frame
             scannerSection.classList.remove("max-h-0", "opacity-0", "border-none");
             scannerSection.classList.add("max-h-[500px]", "opacity-100", "border-2", "border-dashed");
             
@@ -277,7 +261,6 @@
                 </button>
             `;
             
-            // Fire up our updated, safe initialization function
             startScanning();
         }
 
@@ -293,12 +276,10 @@
             const cleanIsbn = isbn.trim().replace(/[-\s]/g, "");
             
             try {
-                // Query existing asset rows index in Google Sheets
                 const lookupResponse = await fetch(`${GOOGLE_SCRIPT_URL}?isbn=${cleanIsbn}`);
                 const lookupData = await lookupResponse.json();
                 activeCopiesData = lookupData.copies || [];
 
-                // Request baseline book catalog specs from OpenLibrary API
                 const apiUrl = `https://openlibrary.org/api/books?bibkeys=ISBN:${cleanIsbn}&jscmd=data&format=json`;
                 const response = await fetch(apiUrl);
                 if (!response.ok) throw new Error("Database reference mapping latency caught.");
@@ -336,16 +317,17 @@
             bookResult.innerHTML = `
                 <!-- Master Meta Presentation Card -->
                 <div class="bg-white rounded-2xl shadow-sm border border-gray-100 p-6 flex flex-col sm:flex-row gap-6 items-start">
-                    <img src="${currentScannedBook.thumbnail}" alt="Jacket Cover" class="w-full sm:w-32 h-44 object-cover rounded-xl shadow-sm bg-gray-100 flex-shrink-0">
-                    <div class="space-y-2 w-full">
+                    <!-- FIXED ASPECT RATIO AND CENTERING ON MOBILE -->
+                    <img src="${currentScannedBook.thumbnail}" alt="Jacket Cover" class="w-32 h-44 object-cover rounded-xl shadow-sm bg-gray-100 flex-shrink-0 mx-auto sm:mx-0">
+                    <div class="space-y-2 w-full text-center sm:text-left">
                         <h2 class="text-xl font-bold text-gray-900 leading-snug">${currentScannedBook.title}</h2>
                         <p class="text-sm font-medium text-indigo-600">by ${currentScannedBook.authors}</p>
-                        <div class="flex gap-1.5 mt-1">
+                        <div class="flex justify-center sm:justify-start gap-1.5 mt-1">
                             <span class="text-[10px] bg-indigo-50 text-indigo-700 px-2 py-0.5 rounded font-semibold">${currentScannedBook.genre}</span>
                             <span class="text-[10px] bg-gray-100 text-gray-600 px-2 py-0.5 rounded font-semibold">${currentScannedBook.pages}</span>
                         </div>
                         <hr class="border-gray-100 my-2">
-                        <div class="grid grid-cols-2 gap-y-2 gap-x-4 text-xs text-gray-500">
+                        <div class="grid grid-cols-2 gap-y-2 gap-x-4 text-xs text-gray-500 text-left">
                             <div><span class="font-semibold text-gray-400 block uppercase tracking-wider text-[10px]">Publisher</span> <span class="text-gray-700 font-medium">${currentScannedBook.publisher}</span></div>
                             <div><span class="font-semibold text-gray-400 block uppercase tracking-wider text-[10px]">Date Published</span> <span class="text-gray-700 font-medium">${currentScannedBook.date}</span></div>
                         </div>
@@ -354,14 +336,12 @@
 
                 <!-- Custom Input Fields & Control Parameters Module -->
                 <div class="bg-white rounded-2xl shadow-sm border border-gray-100 p-5 space-y-4">
-                    <!-- Copy Instance Selection Selector -->
                     <div class="bg-indigo-50/50 p-4 rounded-xl border border-indigo-100/80 space-y-2.5">
                         <label class="block text-[11px] font-bold text-indigo-800 uppercase tracking-wider">Select Tracking Copy Instance</label>
                         <div id="copy-buttons-list" class="flex flex-wrap gap-2"></div>
                         <div id="copy-badge-indicator" class="text-xs font-medium text-indigo-600/90 italic pt-0.5"></div>
                     </div>
 
-                    <!-- Availability Flag Toggle Options -->
                     <div class="bg-gray-50 p-4 rounded-xl border border-gray-200/60 space-y-3">
                         <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
                             <label class="text-xs font-bold text-gray-600 uppercase tracking-wider">Availability Status</label>
@@ -377,7 +357,6 @@
                         </div>
                     </div>
 
-                    <!-- Shelf Storage Row Slots Options -->
                     <div class="space-y-1">
                         <label class="block text-xs font-bold text-gray-600 uppercase tracking-wider">Storage Shelf Location Slot</label>
                         <select id="input-location" class="w-full bg-gray-50 border border-gray-200 rounded-lg p-2.5 text-xs font-medium focus:outline-none focus:ring-2 focus:ring-indigo-500">
@@ -388,7 +367,6 @@
                         </select>
                     </div>
 
-                    <!-- Selection Flag Badge Elements -->
                     <div class="space-y-1">
                         <label class="block text-xs font-bold text-gray-600 uppercase tracking-wider">Collection Tracking Badges</label>
                         <div id="tag-chips-container" class="flex flex-wrap gap-2 pt-1">
@@ -399,7 +377,6 @@
                         </div>
                     </div>
 
-                    <!-- Processing Form Submission Operations Trigger Button -->
                     <button id="submit-to-sheet-btn" onclick="submitDataToGoogleSheets()" 
                         class="w-full bg-indigo-600 hover:bg-indigo-700 text-white font-semibold py-3 rounded-xl text-sm transition-colors shadow-sm cursor-pointer mt-2">
                         Confirm & Sync Data Records
@@ -529,11 +506,9 @@
             });
         }
 
-        // Optimized Processing Pipeline Sync Upload Sequence
         async function submitDataToGoogleSheets() {
             if (!currentScannedBook) return;
         
-            // Capture selected input values
             currentScannedBook.uniqueId = selectedUniqueId;
             currentScannedBook.location = document.getElementById("input-location").value;
             currentScannedBook.status = document.getElementById("input-status").value;
@@ -542,10 +517,8 @@
             const selectedChips = Array.from(document.querySelectorAll(".tag-chip.bg-indigo-600"));
             currentScannedBook.tags = selectedChips.map(c => c.getAttribute("data-val")).join(", ");
         
-            // Save a reference copy before clearing working variables
             const savedBookInstance = { ...currentScannedBook };
             
-            // Clean up old active display elements to show progress loader
             bookResult.innerHTML = `
                 <div class="flex items-center justify-center py-12">
                     <div class="animate-spin rounded-full h-8 w-8 border-b-2 border-indigo-600"></div>
@@ -555,17 +528,12 @@
             showStatus("Syncing row transaction references with Google Sheet engine...", "info");
         
             try {
-                // Post network payload transmission (CORS safely managed by allowing default redirect handling)
                 const response = await fetch(GOOGLE_SCRIPT_URL, {
                     method: "POST",
-                    headers: { "Content-Type": "text/plain;charset=utf-8" }, // Prevents CORS preflight checks while delivering data string
+                    headers: { "Content-Type": "text/plain;charset=utf-8" },
                     body: JSON.stringify(savedBookInstance)
                 });
         
-                // Optional: If your Google App Script returns explicit JSON confirmation statuses
-                // const resultData = await response.json(); 
-        
-                // UI updates inside the successful execution path
                 showStatus(`Successfully synced configuration: "${savedBookInstance.title}"`, "success");
                 appendSessionHistoryLog(savedBookInstance);
                 
@@ -578,7 +546,6 @@
                 
             } catch (err) {
                 showStatus(`Spreadsheet sync transmission dropped: ${err.message}`, "error");
-                // Re-render working assets fields on network configuration crashes so data isn't lost
                 renderIntegratedLayout();
             }
         }
@@ -587,22 +554,21 @@
             historySection.classList.remove("hidden");
             const copyDisplayNum = book.uniqueId.split("-")[1] || "1";
             const statusLabel = book.status === "Checked Out" 
-                ? `<span class="text-[10px] bg-red-50 text-red-700 px-2 py-0.5 rounded-md font-semibold border border-red-100">Copy ${copyDisplayNum} Loaned to ${book.borrower}</span>` 
-                : `<span class="text-[10px] bg-green-50 text-green-700 px-2 py-0.5 rounded-md font-semibold border border-green-100">Copy ${copyDisplayNum} Available</span>`;
+                ? `<span class="text-red-600 font-semibold">Checked Out to ${book.borrower || 'Someone'}</span>` 
+                : `<span class="text-emerald-600 font-semibold">Available</span>`;
             
-            const logItem = `
-                <div class="bg-white p-3 rounded-xl border border-gray-100 shadow-xs flex items-center gap-4 transition-all">
-                    <img src="${book.thumbnail}" class="w-10 h-14 object-cover rounded-lg flex-shrink-0 bg-gray-50 shadow-xs">
-                    <div class="min-w-0 flex-1 space-y-1">
-                        <h4 class="text-xs font-bold text-gray-900 truncate">${book.title}</h4>
-                        <div class="flex flex-wrap gap-1.5 items-center">
-                            ${statusLabel}
-                            <span class="text-[10px] bg-indigo-50 text-indigo-700 px-2 py-0.5 rounded-md font-semibold border border-indigo-100/50">${book.location}</span>
-                        </div>
-                    </div>
+            const logItem = document.createElement("div");
+            logItem.className = "bg-white border border-gray-100 rounded-xl p-3 flex justify-between items-center text-xs shadow-xs animate-fade-in";
+            logItem.innerHTML = `
+                <div>
+                    <p class="font-bold text-gray-800">${book.title}</p>
+                    <p class="text-gray-400 mt-0.5">Copy ${copyDisplayNum} • ${book.location}</p>
+                </div>
+                <div class="text-right">
+                    ${statusLabel}
                 </div>
             `;
-            sessionLog.insertAdjacentHTML("afterbegin", logItem);
+            sessionLog.prepend(logItem);
         }
     </script>
 </body>
