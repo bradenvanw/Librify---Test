@@ -400,8 +400,16 @@
                 appendSessionHistoryLog(savedBookInstance); 
                 fetchAllBooksFromGoogleSheet(); 
                 
+                // Clean up the scanner state variables
                 bookResult.innerHTML = `<div class="bg-white rounded-2xl border border-dashed border-gray-200 p-8 text-center text-gray-400 text-sm">🎉 Profile Synced!</div>`; 
                 currentScannedBook = null; 
+                
+                // Automatically pivot back to the Search Library view
+                setTimeout(() => {
+                    switchAppMode('search');
+                    clearStatus(); // Optional: hides the green notification bar upon returning
+                }, 800); // 800ms delay gives the user brief confirmation feedback before switching views
+                
             } catch (err) { 
                 showStatus(`Spreadsheet sync error: ${err.message}`, "error"); 
                 renderIntegratedLayout(); 
