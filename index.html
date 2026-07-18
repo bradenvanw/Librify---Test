@@ -74,6 +74,26 @@
 
             <!-- Status Log Messages -->
             <div id="status-log" class="hidden text-sm p-3 rounded-xl border font-medium text-center"></div>
+
+            <!-- NEW: Dynamic Tag Settings Panel Toggle Button -->
+            <div class="pt-2 border-t border-gray-100 flex justify-end">
+                <button onclick="toggleTagManagerPanel()" class="text-xs font-semibold text-indigo-600 hover:text-indigo-700 cursor-pointer flex items-center gap-1">
+                    ⚙️ Manage App Tags
+                </button>
+            </div>
+
+            <!-- NEW: Inline Tag Creator and Manager Panel Layout -->
+            <div id="tag-manager-panel" class="hidden bg-gray-50 rounded-xl p-4 border border-gray-200/70 space-y-3">
+                <h3 class="text-xs font-bold text-gray-500 uppercase tracking-wider">Custom Tag Library Settings</h3>
+                <div class="flex gap-2">
+                    <input type="text" id="new-tag-input" placeholder="e.g., Sci-Fi, Signed, Loaned..." 
+                        class="flex-grow bg-white border border-gray-200 rounded-lg p-2 text-xs focus:outline-none focus:ring-2 focus:ring-indigo-500">
+                    <button onclick="addNewCustomUserTag()" class="bg-indigo-600 text-white text-xs font-bold px-3 py-2 rounded-lg cursor-pointer hover:bg-indigo-700">
+                        Add Tag
+                    </button>
+                </div>
+                <div id="tag-library-list" class="flex flex-wrap gap-1.5 pt-1"></div>
+            </div>
         </div>
 
         <!-- Render Target Output Area (Book Details & Custom Tracking Inputs) -->
@@ -102,12 +122,21 @@
         const isbnInput = document.getElementById("isbn-input");
         const historySection = document.getElementById("history-section");
         const sessionLog = document.getElementById("session-log");
+        const tagManagerPanel = document.getElementById("tag-manager-panel");
+        const newTagInput = document.getElementById("new-tag-input");
+        const tagLibraryList = document.getElementById("tag-library-list");
 
         // Application State Managers
         let html5QrcodeScanner = null;
         let currentScannedBook = null;
         let activeCopiesData = [];
         let selectedUniqueId = "";
+        
+        // NEW: Tag Storage System with Default Fallbacks
+        let userTags = JSON.parse(localStorage.getItem("librify_tags")) || ["To Read", "Favorite", "Hardcover", "Borrowed"];
+
+        // Initialization: Run library UI updates immediately
+        renderTagLibrarySettings();
 
         // Manual search input event trigger
         isbnInput.addEventListener("keyup", function(event) {
@@ -118,6 +147,81 @@
                 }
             }
         });
+
+        // NEW: Toggle visibility of the setup control tray
+        function toggleTagManagerPanel() {
+            tagManagerPanel.classList.toggle("hidden");
+        }
+
+        // NEW: Render the management library UI inside the setup card
+        function renderTagLibrarySettings() {
+            tagLibraryList.innerHTML = "";
+            userTags.forEach((tag, idx) => {
+                const span = document.createElement("span");
+                span.className = "inline-flex items-center gap-1 bg-white border border-gray-200 text-gray-700 text-xs px-2 py-1 rounded-md shadow-xs font-medium";
+                span.innerHTML = `
+                    <span>${tag}</span>
+                    <button onclick="deleteCustomUserTag(${idx})" class="text-gray-400 hover:text-red-500 font-bold ml-1 cursor-pointer" title="Delete Tag">&times;</button>
+                `;
+                tagLibraryList.appendChild(span);
+            });
+            localStorage.setItem("librify_tags", JSON.stringify(userTags));
+        }
+
+        // NEW: Push custom items into running engine memory arrays
+        function addNewCustomUserTag() {
+            const rawVal = newTagInput.value.trim();
+            if (rawVal && !userTags.includes(rawVal)) {
+                userTags.push(rawVal);
+                newTagInput.value = "";
+                renderTagLibrarySettings();
+                
+                // If a book is currently open, dynamically update its tag choice list instantly
+                if (currentScannedBook) {
+                    refreshActiveFormTagChips();
+                }
+            }
+        }
+
+        // NEW: Remove items from runtime storage
+        function deleteCustomUserTag(index) {
+            userTags.splice(index, 1);
+            renderTagLibrarySettings();
+            
+            // Re-render open form components instantly to drop removed tags
+            if (currentScannedBook) {
+                refreshActiveFormTagChips();
+            }
+        }
+
+        // NEW: Re-draw current chip buttons safely without forcing layout resets on text rows
+        function refreshActiveFormTagChips() {
+            const container = document.getElementById("tag-chips-container");
+            if (!container) return;
+            
+            // Cache any tags currently selected so they don't reset when editing choices
+            const activeChips = Array.from(document.querySelectorAll(".tag-chip.bg-indigo-600"));
+            const selectedVals = activeChips.map(c => c.getAttribute("data-val"));
+            
+            container.innerHTML = "";
+            userTags.forEach(tag => {
+                const isSelected = selectedVals.includes(tag);
+                const btn = document.createElement("button");
+                btn.type = "button";
+                btn.setAttribute("data-val", tag);
+                
+                if (isSelected) {
+                    btn.className = "tag-chip bg-indigo-600 text-white border border-indigo-600 px-3 py-1.5 text-xs font-medium rounded-xl transition-all cursor-pointer";
+                    btn.innerText = `🏷️ ${tag}`;
+                } else {
+                    btn.className = "tag-chip bg-gray-50 text-gray-600 border border-gray-200/80 px-3 py-1.5 text-xs font-medium rounded-xl transition-all cursor-pointer";
+                    btn.innerText = `➕ ${tag}`;
+                }
+                
+                btn.onclick = () => toggleChipState(btn);
+                container.appendChild(btn);
+            });
+        }
 
         function showStatus(message, type = "info") {
             statusLog.className = "text-sm p-3 rounded-xl border font-medium text-center block";
@@ -316,9 +420,7 @@
         function renderIntegratedLayout() {
             bookResult.innerHTML = `
                 <!-- Master Meta Presentation Card -->
-                <!-- FIXED: Enforced a global side-by-side flex-row layout across all resolutions to safeguard dimensions -->
                 <div class="bg-white rounded-2xl shadow-sm border border-gray-100 p-4 sm:p-6 flex flex-row gap-4 sm:gap-6 items-start">
-                    <!-- FIXED: explicit sizing classes with h-36/w-24 scaling natively to portrait aspect ratios -->
                     <div class="w-24 h-36 sm:w-32 sm:h-44 flex-shrink-0 bg-gray-100 rounded-xl overflow-hidden shadow-xs border border-gray-100">
                         <img src="${currentScannedBook.thumbnail}" alt="Jacket Cover" class="w-full h-full object-cover">
                     </div>
@@ -372,12 +474,8 @@
 
                     <div class="space-y-1">
                         <label class="block text-xs font-bold text-gray-600 uppercase tracking-wider">Collection Tracking Badges</label>
-                        <div id="tag-chips-container" class="flex flex-wrap gap-2 pt-1">
-                            <button type="button" class="tag-chip bg-gray-50 text-gray-600 border border-gray-200/80 px-3 py-1.5 text-xs font-medium rounded-xl transition-all cursor-pointer" data-val="To Read">➕ To Read</button>
-                            <button type="button" class="tag-chip bg-gray-50 text-gray-600 border border-gray-200/80 px-3 py-1.5 text-xs font-medium rounded-xl transition-all cursor-pointer" data-val="Favorite">❤️ Favorite</button>
-                            <button type="button" class="tag-chip bg-gray-50 text-gray-600 border border-gray-200/80 px-3 py-1.5 text-xs font-medium rounded-xl transition-all cursor-pointer" data-val="Hardcover">📖 Hardcover</button>
-                            <button type="button" class="tag-chip bg-gray-50 text-gray-600 border border-gray-200/80 px-3 py-1.5 text-xs font-medium rounded-xl transition-all cursor-pointer" data-val="Borrowed">⏳ Borrowed</button>
-                        </div>
+                        <!-- MODIFIED: Container is now loaded dynamically via runtime functions -->
+                        <div id="tag-chips-container" class="flex flex-wrap gap-2 pt-1"></div>
                     </div>
 
                     <button id="submit-to-sheet-btn" onclick="submitDataToGoogleSheets()" 
@@ -388,6 +486,22 @@
             `;
 
             setupFormInteractions();
+        }
+
+        // NEW: Abstracted toggle function to handle changing active tag visual states
+        function toggleChipState(chip) {
+            chip.classList.toggle("bg-gray-50");
+            chip.classList.toggle("text-gray-600");
+            chip.classList.toggle("border-gray-200/80");
+            chip.classList.toggle("bg-indigo-600");
+            chip.classList.toggle("text-white");
+            chip.classList.toggle("border-indigo-600");
+            
+            if (chip.classList.contains("bg-indigo-600")) {
+                chip.innerText = `🏷️ ${chip.getAttribute("data-val")}`;
+            } else {
+                chip.innerText = `➕ ${chip.getAttribute("data-val")}`;
+            }
         }
 
         function setupFormInteractions() {
@@ -406,16 +520,8 @@
                 }
             });
 
-            document.querySelectorAll(".tag-chip").forEach(chip => {
-                chip.addEventListener("click", () => {
-                    chip.classList.toggle("bg-gray-50");
-                    chip.classList.toggle("text-gray-600");
-                    chip.classList.toggle("border-gray-200/80");
-                    chip.classList.toggle("bg-indigo-600");
-                    chip.classList.toggle("text-white");
-                    chip.classList.toggle("border-indigo-600");
-                });
-            });
+            // Populate the active input form's tag layout option group
+            refreshActiveFormTagChips();
 
             if (activeCopiesData.length > 0) {
                 activeCopiesData.forEach((copy, index) => {
@@ -476,6 +582,7 @@
                     document.querySelectorAll(".tag-chip").forEach(chip => {
                         if (chip.getAttribute("data-val") === tagStr) {
                             chip.className = "tag-chip bg-indigo-600 text-white border border-indigo-600 px-3 py-1.5 text-xs font-medium rounded-xl transition-all cursor-pointer";
+                            chip.innerText = `🏷️ ${tagStr}`;
                         }
                     });
                 });
@@ -506,6 +613,7 @@
         function resetTagChipsUI() {
             document.querySelectorAll(".tag-chip").forEach(chip => {
                 chip.className = "tag-chip bg-gray-50 text-gray-600 border border-gray-200/80 px-3 py-1.5 text-xs font-medium rounded-xl transition-all cursor-pointer";
+                chip.innerText = `➕ ${chip.getAttribute("data-val")}`;
             });
         }
 
