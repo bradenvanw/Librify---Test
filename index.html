@@ -143,38 +143,40 @@
             }
         }
 
-        function startScanning() {
-            // CRITICAL FIX: Instantiate ONCE and reuse. Never destroy the container.
-            if (!html5QrcodeScanner) {
-                html5QrcodeScanner = new Html5Qrcode("interactive-reader");
-            }
-        
-            // If it's already running in the background, don't crash it by starting twice
-            if (html5QrcodeScanner.isScanning) return;
-        
-            const config = {
-                fps: 15, 
-                qrbox: (videoWidth, videoHeight) => {
-                    const boxWidth = Math.min(videoWidth * 0.90, 360);
-                    const boxHeight = Math.min(videoHeight * 0.50, 180);
-                    return { width: boxWidth, height: boxHeight };
-                },
-                formatsToSupport: [ 
-                    Html5QrcodeSupportedFormats.EAN_13, 
-                    Html5QrcodeSupportedFormats.EAN_8 
-                ]
-            };
-        
-            html5QrcodeScanner.start(
-                { facingMode: "environment" },
-                config,
-                onScanSuccess
-            ).catch(err => {
-                console.error("Camera startup blocked:", err);
-                showStatus("📷 Camera block encountered. Resetting panel...", "error");
-                resetScannerUIState();
-            });
+       function startScanning() {
+        if (!html5QrcodeScanner) {
+            html5QrcodeScanner = new Html5Qrcode("interactive-reader");
         }
+    
+        // Use built-in states to safeguard starting loops
+        const state = html5QrcodeScanner.getState();
+        if (state === Html5QrcodeScannerState.SCANNING) return;
+        if (state === Html5QrcodeScannerState.PAUSED) {
+            html5QrcodeScanner.resume();
+            return;
+        }
+    
+        const config = {
+            fps: 15, 
+            qrbox: (videoWidth, videoHeight) => {
+                const boxWidth = Math.min(videoWidth * 0.90, 360);
+                const boxHeight = Math.min(videoHeight * 0.50, 180);
+                return { width: boxWidth, height: boxHeight };
+            },
+            formatsToSupport: [ 
+                Html5QrcodeSupportedFormats.EAN_13, 
+                Html5QrcodeSupportedFormats.EAN_8 
+            ]
+        };
+    
+        html5QrcodeScanner.start(
+            { facingMode: "environment" },
+            config,
+            onScanSuccess
+        ).catch(err => {
+            console.error("Camera startup error:", err);
+        });
+    }
         
         function stopScanning() {
             if (html5QrcodeScanner && html5QrcodeScanner.isScanning) {
@@ -196,11 +198,17 @@
             toggleScanBtn.className = "bg-indigo-600 hover:bg-indigo-700 text-white font-medium px-5 py-3 rounded-xl text-sm transition-colors shadow-sm cursor-pointer flex items-center justify-center gap-2";
         }
 
-        function onScanSuccess(decodedText) {
-            isbnInput.value = decodedText;
-            stopScanning();
-            checkExistingAndFetchMetadata(decodedText);
-        }
+        function onScanSuccess(decodedText, decodedResult) {
+    // Immediate pipeline freeze so it stops reading matching lines
+    if (html5QrcodeScanner && html5QrcodeScanner.getState() === Html5QrcodeScannerState.SCANNING) {
+        html5QrcodeScanner.pause(true); // true pauses the visual video frame too
+    }
+    
+    console.log("Barcode captured:", decodedText);
+    
+    // ... your existing code that fetches book details or opens the form layout ...
+    // e.g., fetchBookDetails(decodedText);
+    }
 
         // Integrated Query Orchestrator & Multi-Copy Sync Parser
         async function checkExistingAndFetchMetadata(isbn) {
@@ -473,21 +481,28 @@
                 await fetch(GOOGLE_SCRIPT_URL, {
                     method: "POST",
                     mode: "no-cors", 
-                    headers: { "Content-Type": "application/json" },
                     body: JSON.stringify(currentScannedBook)
                 });
         
-                showStatus(`Successfully synced configuration: "${currentScannedBook.title}"`, "success");
+                showStatus(`Synced: "${currentScannedBook.title}"`, "success");
                 appendSessionHistoryLog(currentScannedBook);
                 
-                // --- THE FIX IS HERE ---
-                // Cleanly completely reset our global scanner tracking state 
-                // so the system is unlocked and ready to scan your next book immediately!
+                // --- CLEAN MULTI-SCAN RESUME LOOP ---
                 currentScannedBook = null;
-                resetScannerUIState(); 
+                bookResult.innerHTML = ""; 
                 
+                // If scanner is paused, cleanly wake it back up for the next book immediately!
+                if (html5QrcodeScanner && html5QrcodeScanner.getState() === Html5QrcodeScannerState.PAUSED) {
+                    html5QrcodeScanner.resume();
+                }
+        
             } catch (err) {
-                showStatus(`Spreadsheet sync transmission dropped: ${err.message}`, "error");
+                showStatus(`Transmission dropped: ${err.message}`, "error");
+                
+                // Also resume if saving fails so they aren't stuck!
+                if (html5QrcodeScanner && html5QrcodeScanner.getState() === Html5QrcodeScannerState.PAUSED) {
+                    html5QrcodeScanner.resume();
+                }
             }
         }
 
