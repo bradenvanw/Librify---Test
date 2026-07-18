@@ -1,94 +1,10 @@
-<!DOCTYPE html>
-<html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Librify - Book Scanner & Collection Tracker</title>
-    <!-- Tailwind CSS CDN for presentation styling -->
-    <script src="https://cdn.jsdelivr.net/npm/@tailwindcss/browser@4"></script>
-    <!-- html5-qrcode production library dependency -->
-    <script src="https://unpkg.com/html5-qrcode" type="text/javascript"></script>
-    <style>
-        /* Complete container framework fix for vertical mobile viewports */
-        #interactive-reader {
-            width: 100% !important;
-            max-width: 100% !important;
-            overflow: hidden !important;
-            border-radius: 0.75rem;
-            position: relative;
-            background: #000000;
-        }
-
-        /* Forces inner video stream elements to conform to boundaries */
-        #interactive-reader video {
-            width: 100% !important;
-            height: auto !important;
-            max-height: 40vh !important;
-            object-fit: cover !important;
-            border-radius: 0.5rem;
-        }
-
-        /* Centers and locks down the scanning placement box element layers */
-        #interactive-reader__scan_region {
-            display: flex !important;
-            align-items: center !important;
-            justify-content: center !important;
-            overflow: hidden !important;
-        }
-    </style>
-</head>
-<body class="bg-gray-50 text-gray-800 font-sans min-h-screen pb-12">
-
-    <div class="max-w-xl mx-auto p-4 sm:p-6">
-        <!-- Header -->
-        <header class="text-center my-6">
-            <h1 class="text-3xl font-extrabold text-indigo-600 tracking-tight">Librify</h1>
-            <p class="text-sm text-gray-500 mt-1">Scan a book's barcode or type an ISBN to manage your collection</p>
-        </header>
-
-        <!-- Main Dashboard Actions -->
-        <div class="bg-white rounded-2xl shadow-sm border border-gray-100 p-5 space-y-4">
-            
-            <!-- Controls Form -->
-            <div class="flex flex-col sm:flex-row gap-3">
-                <div class="relative flex-grow">
-                    <input type="text" id="isbn-input" placeholder="Enter 10 or 13-digit ISBN..." 
-                        class="w-full pl-4 pr-10 py-3 bg-gray-50 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-indigo-500 text-sm transition-all">
-                </div>
-                <button id="toggle-scan-btn" onclick="toggleScanner()" 
-                    class="bg-indigo-600 hover:bg-indigo-700 text-white font-medium px-5 py-3 rounded-xl text-sm transition-colors shadow-sm cursor-pointer flex items-center justify-center gap-2">
-                    <span>Open Scanner</span>
-                </button>
-            </div>
-
-            <!-- Interactive Camera Scanner Window Section -->
-            <div id="scanner-section" class="hidden border-2 border-dashed border-gray-200 rounded-2xl p-3 bg-gray-50 overflow-hidden transition-all duration-300">
-                <div id="interactive-reader" class="w-full mx-auto"></div>
-                <p class="text-center text-xs text-gray-400 mt-2">Center the book's linear barcode inside the highlighted rectangle box.</p>
-            </div>
-
-            <!-- Feedback App Status Log Messages -->
-            <div id="status-log" class="hidden text-sm p-3 rounded-xl border font-medium text-center"></div>
-        </div>
-
-        <!-- Render Target Output Area (Combines Book Details & Meta Tracking Inputs) -->
-        <main id="book-result" class="mt-6 space-y-6"></main>
-
-        <!-- Session Activity History Feed Container -->
-        <div id="history-section" class="mt-8 hidden">
-            <div class="border-b border-gray-200 pb-2 mb-3">
-                <h2 class="text-xs font-bold text-gray-400 uppercase tracking-wider">Session Activity</h2>
-            </div>
-            <div id="session-log" class="space-y-3"></div>
-        </div>
-    </div>
-
-    <!-- Main Core Business Script Execution Block -->
+<!-- Main Core Business Script Execution Block -->
     <script>
         // =========================================================================
         // !!! PASTE YOUR GOOGLE APPS SCRIPT WEB APP EXTENSION URL API LINK HERE !!!
         // =========================================================================
         const GOOGLE_SCRIPT_URL = "https://script.google.com/macros/s/AKfycbwm40P8tFwbe2iyRiPe3tRarSCi8d3f9RsVTdzVHyFfnIr0cecuPkzxSOs9OCawuc3eJw/exec";
+        
         // DOM Nodes Elements Scaffolding References
         const toggleScanBtn = document.getElementById("toggle-scan-btn");
         const scannerSection = document.getElementById("scanner-section");
@@ -190,7 +106,6 @@
         }
         
         function resetScannerUIState() {
-            // Do NOT wipe innerHTML or set scanner to null anymore. Just toggle visuals.
             scannerSection.classList.add("hidden");
             toggleScanBtn.innerText = "Open Scanner";
             toggleScanBtn.className = "bg-indigo-600 hover:bg-indigo-700 text-white font-medium px-5 py-3 rounded-xl text-sm transition-colors shadow-sm cursor-pointer flex items-center justify-center gap-2";
@@ -205,20 +120,8 @@
             console.log("Barcode detected:", decodedText);
             showStatus("Book detected! Fetching details...", "info");
         
-            // CRITICAL FIX: Ensure currentScannedBook is initialized as a fresh object
-            currentScannedBook = {
-                barcode: decodedText,
-                title: "Loading...", // Will be overwritten by your lookup function
-                timestamp: new Date().toISOString()
-            };
-        
-            // Call your existing function to fetch details from Google/OpenLibrary
-            if (typeof fetchBookDetails === "function") {
-                fetchBookDetails(decodedText);
-            } else {
-                // Fallback if you don't have a lookup function: unlock form manually
-                document.getElementById("book-title-display").innerText = "Barcode: " + decodedText;
-            }
+            // Routed directly to the primary lookup function
+            checkExistingAndFetchMetadata(decodedText);
         }
 
         // Integrated Query Orchestrator & Multi-Copy Sync Parser
@@ -249,17 +152,25 @@
                 if (!data || !data[bookKey]) {
                     showStatus("No matching structural data log found for this ISBN barcode.", "error");
                     bookResult.innerHTML = "";
+                    if (html5QrcodeScanner) html5QrcodeScanner.resume();
                     return;
                 }
 
                 const vol = data[bookKey];
+                
+                // Secure protocol link formatting for image assets
+                let coverUrl = 'https://images.unsplash.com/photo-1543002588-bfa74002ed7e?q=80&w=300&auto=format&fit=crop';
+                if (vol.cover && vol.cover.large) {
+                    coverUrl = vol.cover.large.replace(/^http:/i, "https:");
+                }
+
                 currentScannedBook = {
                     isbn: cleanIsbn,
                     title: vol.title || "Unknown Title Content",
                     authors: vol.authors ? vol.authors.map(a => a.name).join(", ") : "Unregistered Author Data",
                     publisher: vol.publishers ? vol.publishers.map(p => p.name).join(", ") : "N/A",
                     date: vol.publish_date || "N/A",
-                    thumbnail: vol.cover && vol.cover.large ? vol.cover.large : 'https://images.unsplash.com/photo-1543002588-bfa74002ed7e?q=80&w=300&auto=format&fit=crop',
+                    thumbnail: coverUrl,
                     genre: vol.subjects ? vol.subjects[0].name : "General Reading",
                     pages: vol.number_of_pages ? `${vol.number_of_pages} pgs` : "N/A"
                 };
@@ -270,11 +181,11 @@
             } catch (err) {
                 showStatus(`System exceptions processing assets: ${err.message}`, "error");
                 bookResult.innerHTML = "";
+                if (html5QrcodeScanner) html5QrcodeScanner.resume();
             }
         }
 
         function renderIntegratedLayout() {
-            // Render basic layout blueprint frame matching Librify's exact presentation output cards
             bookResult.innerHTML = `
                 <!-- Master Meta Presentation Card -->
                 <div class="bg-white rounded-2xl shadow-sm border border-gray-100 p-6 flex flex-col sm:flex-row gap-6 items-start">
@@ -349,7 +260,6 @@
                 </div>
             `;
 
-            // Attach operational bindings hooks natively to generated nodes elements
             setupFormInteractions();
         }
 
@@ -380,7 +290,6 @@
                 });
             });
 
-            // Parse Copy arrays variations structural loops options 
             if (activeCopiesData.length > 0) {
                 activeCopiesData.forEach((copy, index) => {
                     const btn = document.createElement("button");
@@ -473,15 +382,12 @@
             });
         }
        
-        // Processing Pipeline Sync Upload Sequences
-       async function submitDataToGoogleSheets() {
-        // If this is null, it means the second scan didn't register or assign properly
+        async function submitDataToGoogleSheets() {
             if (!currentScannedBook) {
                 showStatus("⚠️ No active book data found to send. Please scan a book first.", "error");
                 return;
             }
         
-            // Build the payload safely
             currentScannedBook.uniqueId = selectedUniqueId || "";
             currentScannedBook.location = document.getElementById("input-location")?.value || "";
             currentScannedBook.status = document.getElementById("input-status")?.value || "";
@@ -493,7 +399,6 @@
             showStatus("Sending data to Google Sheets...", "info");
         
             try {
-                // Added a timestamp cache-buster to the URL to force Google to process every single click uniquely
                 const cacheBusterUrl = `${GOOGLE_SCRIPT_URL}?cb=${Date.now()}`;
         
                 await fetch(cacheBusterUrl, {
@@ -506,27 +411,22 @@
                 showStatus("🎉 Successfully saved to spreadsheet!", "success");
                 appendSessionHistoryLog(currentScannedBook);
                 
-                // --- DEEP RESET FOR NEXT BOOK ---
-                currentScannedBook = null; // Clear out the object so it's ready for a fresh one
+                // Deep state reset routine
+                currentScannedBook = null; 
                 
-                // Clear out the input fields so old data doesn't stick around
                 if (document.getElementById("input-borrower")) document.getElementById("input-borrower").value = "";
                 if (document.getElementById("input-location")) document.getElementById("input-location").value = "";
+                if (document.getElementById("isbn-input")) document.getElementById("isbn-input").value = "";
                 
-                // Un-highlight selected tag chips
-                document.querySelectorAll(".tag-chip").forEach(chip => chip.classList.remove("bg-indigo-600", "text-white"));
-        
-                // Clear the visual form layout area
+                resetTagChipsUI();
                 if (bookResult) bookResult.innerHTML = ""; 
         
-                // Turn the camera scanner back on natively
                 if (html5QrcodeScanner) {
                     html5QrcodeScanner.resume();
                 }
         
             } catch (err) {
                 showStatus(`Transmission failed: ${err.message}`, "error");
-                // Resume scanning even if it fails so you aren't locked out
                 if (html5QrcodeScanner) html5QrcodeScanner.resume();
             }
         }
@@ -551,5 +451,3 @@
             sessionLog.insertAdjacentHTML("afterbegin", logItem);
         }
     </script>
-</body>
-</html>
