@@ -386,6 +386,9 @@
             clearStatus(); 
             bookResult.innerHTML = `<div class="flex items-center justify-center py-12"><div class="animate-spin rounded-full h-8 w-8 border-b-2 border-indigo-600"></div><span class="ml-3 text-sm text-gray-500">Searching catalog...</span></div>`; 
             
+            // ⚠️ PASTE YOUR COPIED GOOGLE API KEY HERE
+            const GOOGLE_BOOKS_API_KEY = "AIzaSyCPrABNnNk9KWMu5kS4cRc2DMPk3DGoNQI";
+        
             const cleanIsbn = isbn.trim().replace(/[^0-9X]/gi, ""); 
             if (!cleanIsbn || (cleanIsbn.length !== 10 && cleanIsbn.length !== 13)) {
                 showStatus("Invalid ISBN structure. Please input a valid 10 or 13-digit code.", "error");
@@ -397,7 +400,7 @@
             activeCopiesData = [];
             try {
                 const controller = new AbortController();
-                const timeoutId = setTimeout(() => controller.abort(), 3000); // Stop waiting after 3 seconds
+                const timeoutId = setTimeout(() => controller.abort(), 3000);
         
                 const lookupResponse = await fetch(`${GOOGLE_SCRIPT_URL}?isbn=${cleanIsbn}`, { signal: controller.signal }); 
                 clearTimeout(timeoutId);
@@ -408,12 +411,12 @@
                 }
             } catch(sheetErr) {
                 console.warn("Sheet verification timed out or was blocked. Proceeding directly to Google Books lookup.", sheetErr);
-                // We purposefully don't crash here so the user still gets book data
             }
         
-            // 2. Fetch data from Google Books API
+            // 2. Fetch data from Google Books API using your explicit API Key
             try { 
-                const url = `https://www.googleapis.com/books/v1/volumes?q=isbn:${cleanIsbn}`;
+                // We append the key parameter to prove you have your own personal quota
+                const url = `https://www.googleapis.com/books/v1/volumes?q=isbn:${cleanIsbn}${GOOGLE_BOOKS_API_KEY ? `&key=${GOOGLE_BOOKS_API_KEY}` : ''}`;
                 const response = await fetch(url);
                 
                 if (!response.ok) {
