@@ -204,25 +204,28 @@
         function onScanSuccess(decodedText) {
             isbnInput.value = decodedText;
             
-            // Cleanly stop the video hardware on success before moving forward
+            // 1. Immediately update the button state so the user knows it worked
+            renderScanNextButtonState();
+            
+            // 2. Safely stop the camera. If it fails, we still move forward.
             if (html5QrcodeScanner && html5QrcodeScanner.isScanning) {
-                html5QrcodeScanner.stop().then(() => {
-                    renderScanNextButtonState();
-                    checkExistingAndFetchMetadata(decodedText);
-                }).catch(err => {
-                    console.error("Error stopping track loop:", err);
-                    renderScanNextButtonState();
-                    checkExistingAndFetchMetadata(decodedText);
-                });
+                html5QrcodeScanner.stop()
+                    .then(() => { console.log("Camera stopped cleanly."); })
+                    .catch(err => { console.warn("Camera stop warning:", err); })
+                    .finally(() => {
+                        // 3. ONLY query the databases AFTER the camera hook is completely released
+                        checkExistingAndFetchMetadata(decodedText);
+                    });
             } else {
-                renderScanNextButtonState();
                 checkExistingAndFetchMetadata(decodedText);
             }
         }
-
+        
         function renderScanNextButtonState() {
+            // Hide the scanner container frame immediately
             scannerSection.classList.add("hidden");
-            // Replace old controller layout with a dedicated reset action button
+            
+            // Swap the top container to display the green action trigger button
             actionBtnContainer.innerHTML = `
                 <button id="scan-next-btn" onclick="prepareNextScanSession()" 
                     class="bg-emerald-600 hover:bg-emerald-700 text-white font-semibold px-5 py-3 rounded-xl text-sm transition-colors shadow-sm cursor-pointer flex items-center justify-center gap-2 whitespace-nowrap animate-pulse">
@@ -230,7 +233,7 @@
                 </button>
             `;
         }
-
+        
         function prepareNextScanSession() {
             // Flush display state profiles
             bookResult.innerHTML = "";
@@ -238,15 +241,16 @@
             isbnInput.value = "";
             clearStatus();
             
-            // Render the baseline scanner interface back in and spin up camera loop elements immediately
-            scannerSection.classList.remove("hidden");
+            // Put back the original toggle button architecture
             actionBtnContainer.innerHTML = `
                 <button id="toggle-scan-btn" onclick="toggleScanner()" 
-                    class="bg-gray-600 hover:bg-gray-700 text-white font-medium px-5 py-3 rounded-xl text-sm transition-colors shadow-sm cursor-pointer flex items-center justify-center gap-2 whitespace-nowrap">
-                    <span>Close Scanner</span>
+                    class="bg-indigo-600 hover:bg-indigo-700 text-white font-medium px-5 py-3 rounded-xl text-sm transition-colors shadow-sm cursor-pointer flex items-center justify-center gap-2 whitespace-nowrap">
+                    <span>Open Scanner</span>
                 </button>
             `;
-            startScanning();
+            
+            // Now trigger the normal toggle function to open the container and fire the lens up
+            toggleScanner();
         }
 
         async function checkExistingAndFetchMetadata(isbn) {
