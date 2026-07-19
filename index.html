@@ -474,14 +474,20 @@
                 showStatus(`Successfully updated catalog: "${savedBookInstance.title}"`, "success"); 
                 appendSessionHistoryLog(savedBookInstance); 
                 fetchAllBooksFromGoogleSheet(); 
-                bookResult.innerHTML = `<div class="bg-white rounded-2xl border border-dashed border-gray-200 p-8 text-center text-gray-400 text-sm">🎉 Profile Synced!</div>`; 
+                
+                // Clear the workspace and reset tracking states
+                bookResult.innerHTML = ""; 
                 currentScannedBook = null; 
+                isbnInput.value = "";
+                
+                // Switch back to the library navigation view automatically
+                switchAppMode('search');
             } catch (err) { 
                 showStatus(`Spreadsheet sync error: ${err.message}`, "error"); 
                 renderIntegratedLayout(); 
             } 
         }
-
+        
         async function checkExistingAndFetchMetadata(isbn, cachedBookData = null) { 
             clearStatus(); 
             switchAppMode('scan');
