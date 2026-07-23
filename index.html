@@ -847,7 +847,7 @@
                     searchResults = await response.json();
                 }
         
-                // 2. Fallback: If ISBN returns no items (or user typed a title/author string), search by general query
+                // 2. Fallback: If ISBN returns no items (or raw input exists), search by general query
                 if ((!searchResults || !searchResults.items || searchResults.items.length === 0) && rawInput) {
                     showStatus("ISBN lookup failed. Fallback searching by Title/Author...", "info");
                     const fallbackUrl = `https://www.googleapis.com/books/v1/volumes?q=${encodeURIComponent(rawInput)}&printType=books&key=${GOOGLE_BOOKS_API_KEY}`;
@@ -855,37 +855,53 @@
                     searchResults = await fallbackResponse.json();
                 }
                 
-                // 3. Process matched item if found
+                // 3. Render selection list if multiple or fallback results exist
                 if (searchResults && searchResults.items && searchResults.items.length > 0) { 
-                    const vol = searchResults.items[0].volumeInfo; 
-                    const identifiers = vol.industryIdentifiers || [];
-                    const foundIsbn = identifiers.find(id => id.type === "ISBN_13" || id.type === "ISBN_10")?.identifier || cleanIsbn || `MANUAL-${Date.now()}`;
-                    
-                    const fetchedCover = vol.imageLinks && vol.imageLinks.thumbnail 
-                        ? vol.imageLinks.thumbnail.replace("http://", "https://") 
-                        : FALLBACK_COVER;
+                    // If it was an exact ISBN match with only 1 result, auto-select it directly
+                    if (cleanIsbn && searchResults.items.length === 1) {
+                        selectCandidateBook(searchResults.items[0], cleanIsbn);
+                        return;
+                    }
         
-                    currentScannedBook = { 
-                        isbn: foundIsbn, 
-                        title: vol.title || "Unknown Title", 
-                        subtitle: vol.subtitle || "",
-                        authors: vol.authors ? vol.authors.join(", ") : "Unknown Author", 
-                        publisher: vol.publisher || "N/A", 
-                        publishedDate: vol.publishedDate || "N/A", 
-                        coverImage: fetchedCover,
-                        thumbnail: fetchedCover,
-                        categories: vol.categories ? vol.categories.join(", ") : "General",
-                        genre: vol.categories ? vol.categories[0] : "General Reading", 
-                        pageCount: vol.pageCount || "N/A",
-                        description: vol.description || "No description available.", 
-                        language: vol.language ? vol.language.toUpperCase() : "N/A", 
-                        dimensions: "N/A", 
-                        dateBorrowed: "", 
-                        dueDate: "", 
-                        reader: ""
-                    }; 
-                    showStatus("Book profile matched!", "success"); 
-                    renderIntegratedLayout(); 
+                    // Otherwise, show candidate list for manual selection
+                    showStatus(`Found ${searchResults.items.length} matching candidate(s). Please choose the correct edition:`, "info");
+                    
+                    bookResult.innerHTML = `
+                        <div class="space-y-3">
+                            <h3 class="text-xs font-bold text-gray-500 uppercase tracking-wider">Select the Best Match:</h3>
+                            <div id="candidates-list" class="space-y-2"></div>
+                        </div>
+                    `;
+        
+                    const candidatesList = document.getElementById("candidates-list");
+        
+                    searchResults.items.forEach(item => {
+                        const vol = item.volumeInfo || {};
+                        const cover = vol.imageLinks?.thumbnail ? vol.imageLinks.thumbnail.replace("http://", "https://") : FALLBACK_COVER;
+                        const title = vol.title || "Unknown Title";
+                        const authors = vol.authors ? vol.authors.join(", ") : "Unknown Author";
+                        const year = vol.publishedDate ? (vol.publishedDate.match(/\d{4}/) || ["N/A"])[0] : "N/A";
+        
+                        const card = document.createElement("div");
+                        card.className = "bg-white p-3 rounded-xl border border-gray-200 shadow-2xs flex gap-3 items-center text-left hover:border-indigo-400 cursor-pointer transition-all";
+                        card.innerHTML = `
+                            <div class="w-12 h-16 bg-gray-50 border rounded-md overflow-hidden flex-shrink-0">
+                                <img src="${cover}" class="w-full h-full object-cover" onerror="this.src='${FALLBACK_COVER}'">
+                            </div>
+                            <div class="flex-grow min-w-0">
+                                <h4 class="text-xs font-bold text-gray-900 truncate">${title}</h4>
+                                <p class="text-[11px] text-gray-500 truncate">by ${authors}</p>
+                                <p class="text-[10px] text-gray-400 mt-0.5">📅 ${year} • 📖 ${vol.pageCount || 'N/A'} pgs</p>
+                            </div>
+                            <button class="bg-indigo-50 hover:bg-indigo-100 text-indigo-700 text-xs font-bold px-3 py-1.5 rounded-lg border border-indigo-200 shrink-0">
+                                Select
+                            </button>
+                        `;
+        
+                        card.onclick = () => selectCandidateBook(item, cleanIsbn);
+                        candidatesList.appendChild(card);
+                    });
+        
                     return;
                 } 
         
@@ -906,6 +922,40 @@
                 showStatus(`Lookup error: ${err.message}`, "error");
                 bookResult.innerHTML = ""; 
             } 
+        }
+        
+        // Helper function to build the book profile once selected
+        function selectCandidateBook(item, fallbackIsbn) {
+            const vol = item.volumeInfo || {};
+            const identifiers = vol.industryIdentifiers || [];
+            const foundIsbn = identifiers.find(id => id.type === "ISBN_13" || id.type === "ISBN_10")?.identifier || fallbackIsbn || `MANUAL-${Date.now()}`;
+            
+            const fetchedCover = vol.imageLinks && vol.imageLinks.thumbnail 
+                ? vol.imageLinks.thumbnail.replace("http://", "https://") 
+                : FALLBACK_COVER;
+        
+            currentScannedBook = { 
+                isbn: foundIsbn, 
+                title: vol.title || "Unknown Title", 
+                subtitle: vol.subtitle || "",
+                authors: vol.authors ? vol.authors.join(", ") : "Unknown Author", 
+                publisher: vol.publisher || "N/A", 
+                publishedDate: vol.publishedDate || "N/A", 
+                coverImage: fetchedCover,
+                thumbnail: fetchedCover,
+                categories: vol.categories ? vol.categories.join(", ") : "General",
+                genre: vol.categories ? vol.categories[0] : "General Reading", 
+                pageCount: vol.pageCount || "N/A",
+                description: vol.description || "No description available.", 
+                language: vol.language ? vol.language.toUpperCase() : "N/A", 
+                dimensions: "N/A", 
+                dateBorrowed: "", 
+                dueDate: "", 
+                reader: ""
+            }; 
+            
+            showStatus("Book profile selected!", "success"); 
+            renderIntegratedLayout(); 
         }
         
         isbnInput.addEventListener("keyup", function(e) { if (e.key === "Enter") { const q = isbnInput.value.trim().replace(/[-\s]/g, ""); if (q) checkExistingAndFetchMetadata(q); } });
