@@ -821,6 +821,7 @@
             switchAppMode('scan');
             bookResult.innerHTML = `<div class="flex items-center justify-center py-12"><div class="animate-spin rounded-full h-8 w-8 border-b-2 border-indigo-600"></div></div>`; 
             
+            const rawInput = isbnInput.value.trim();
             const cleanIsbn = isbn.toString().trim().replace(/[^0-9X]/gi, ""); 
             
             activeCopiesData = [];
@@ -837,43 +838,58 @@
             }
         
             try { 
+                let searchResults = null;
+        
+                // 1. Try direct ISBN lookup first
                 if (cleanIsbn) {
                     const googleUrl = `https://www.googleapis.com/books/v1/volumes?q=isbn:${cleanIsbn}&printType=books&key=${GOOGLE_BOOKS_API_KEY}`;
                     const response = await fetch(googleUrl);
-                    const searchResults = await response.json();
-                    
-                    if (searchResults.items && searchResults.items.length > 0) { 
-                        const vol = searchResults.items[0].volumeInfo; 
-                        
-                        const fetchedCover = vol.imageLinks && vol.imageLinks.thumbnail 
-                            ? vol.imageLinks.thumbnail.replace("http://", "https://") 
-                            : FALLBACK_COVER;
-
-                        currentScannedBook = { 
-                            isbn: cleanIsbn, 
-                            title: vol.title || "Unknown Title", 
-                            subtitle: vol.subtitle || "",
-                            authors: vol.authors ? vol.authors.join(", ") : "Unknown Author", 
-                            publisher: vol.publisher || "N/A", 
-                            publishedDate: vol.publishedDate || "N/A", 
-                            coverImage: fetchedCover,
-                            thumbnail: fetchedCover,
-                            categories: vol.categories ? vol.categories.join(", ") : "General",
-                            genre: vol.categories ? vol.categories[0] : "General Reading", 
-                            pageCount: vol.pageCount || "N/A",
-                            description: vol.description || "No description available.", 
-                            language: vol.language ? vol.language.toUpperCase() : "N/A", 
-                            dimensions: "N/A", 
-                            dateBorrowed: "", 
-                            dueDate: "", 
-                            reader: ""
-                        }; 
-                        showStatus("Book profile matched!", "success"); 
-                        renderIntegratedLayout(); 
-                        return;
-                    } 
+                    searchResults = await response.json();
                 }
-
+        
+                // 2. Fallback: If ISBN returns no items (or user typed a title/author string), search by general query
+                if ((!searchResults || !searchResults.items || searchResults.items.length === 0) && rawInput) {
+                    showStatus("ISBN lookup failed. Fallback searching by Title/Author...", "info");
+                    const fallbackUrl = `https://www.googleapis.com/books/v1/volumes?q=${encodeURIComponent(rawInput)}&printType=books&key=${GOOGLE_BOOKS_API_KEY}`;
+                    const fallbackResponse = await fetch(fallbackUrl);
+                    searchResults = await fallbackResponse.json();
+                }
+                
+                // 3. Process matched item if found
+                if (searchResults && searchResults.items && searchResults.items.length > 0) { 
+                    const vol = searchResults.items[0].volumeInfo; 
+                    const identifiers = vol.industryIdentifiers || [];
+                    const foundIsbn = identifiers.find(id => id.type === "ISBN_13" || id.type === "ISBN_10")?.identifier || cleanIsbn || `MANUAL-${Date.now()}`;
+                    
+                    const fetchedCover = vol.imageLinks && vol.imageLinks.thumbnail 
+                        ? vol.imageLinks.thumbnail.replace("http://", "https://") 
+                        : FALLBACK_COVER;
+        
+                    currentScannedBook = { 
+                        isbn: foundIsbn, 
+                        title: vol.title || "Unknown Title", 
+                        subtitle: vol.subtitle || "",
+                        authors: vol.authors ? vol.authors.join(", ") : "Unknown Author", 
+                        publisher: vol.publisher || "N/A", 
+                        publishedDate: vol.publishedDate || "N/A", 
+                        coverImage: fetchedCover,
+                        thumbnail: fetchedCover,
+                        categories: vol.categories ? vol.categories.join(", ") : "General",
+                        genre: vol.categories ? vol.categories[0] : "General Reading", 
+                        pageCount: vol.pageCount || "N/A",
+                        description: vol.description || "No description available.", 
+                        language: vol.language ? vol.language.toUpperCase() : "N/A", 
+                        dimensions: "N/A", 
+                        dateBorrowed: "", 
+                        dueDate: "", 
+                        reader: ""
+                    }; 
+                    showStatus("Book profile matched!", "success"); 
+                    renderIntegratedLayout(); 
+                    return;
+                } 
+        
+                // 4. Fall back to local sheet cache if available
                 if (cachedBookData) {
                     currentScannedBook = { ...cachedBookData };
                     if (!currentScannedBook.coverImage && currentScannedBook.thumbnail) {
@@ -883,12 +899,14 @@
                     renderIntegratedLayout();
                     return;
                 }
-                showStatus(`No online record found. Consider entering manually.`, "error"); 
+        
+                showStatus(`No online records found for "${rawInput}". Use manual entry below.`, "error"); 
                 bookResult.innerHTML = ""; 
             } catch (err) { 
+                showStatus(`Lookup error: ${err.message}`, "error");
                 bookResult.innerHTML = ""; 
             } 
-        } 
+        }
         
         isbnInput.addEventListener("keyup", function(e) { if (e.key === "Enter") { const q = isbnInput.value.trim().replace(/[-\s]/g, ""); if (q) checkExistingAndFetchMetadata(q); } });
 
