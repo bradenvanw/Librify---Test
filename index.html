@@ -64,18 +64,6 @@
             
             <p class="text-[11px] text-gray-400 italic">Toggle the checkboxes next to any parameter to pinpoint exactly which filters appear on your main search dashboard.</p>
             
-            <!-- Library Branches Manager Component -->
-            <div class="space-y-2">
-                <h3 class="text-xs font-bold text-gray-500 uppercase tracking-wider">🏢 Library Branches</h3>
-                <div class="flex gap-2">
-                    <input type="text" id="new-branch-input" placeholder="e.g., Main Branch, Westside..." class="flex-grow bg-gray-50 border border-gray-200 rounded-lg p-2 text-xs focus:outline-none focus:ring-1 focus:ring-indigo-500">
-                    <button onclick="addNewCustomBranch()" class="bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-bold px-4 py-2 rounded-lg cursor-pointer">Add</button>
-                </div>
-                <div id="branch-library-list" class="flex flex-col gap-1.5 pt-1 max-h-32 overflow-y-auto pr-1"></div>
-            </div>
-
-            <hr class="border-gray-100">
-
             <!-- Household Members Manager Component -->
             <div class="space-y-2">
                 <h3 class="text-xs font-bold text-gray-500 uppercase tracking-wider">👥 Household Members</h3>
@@ -157,7 +145,7 @@
 
             <div class="bg-white rounded-2xl shadow-sm border border-gray-100 p-5 space-y-3">
                 <div class="flex gap-2">
-                    <input type="text" id="library-search-query" oninput="filterLocalCatalogCache()" placeholder="Title, author, notes, branch, or ISBN..." 
+                    <input type="text" id="library-search-query" oninput="filterLocalCatalogCache()" placeholder="Title, author, category, or ISBN..." 
                         class="w-full px-4 py-2.5 bg-gray-50 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-indigo-500 text-sm">
                     <button onclick="fetchAllBooksFromGoogleSheet()" class="bg-indigo-50 hover:bg-indigo-100 text-indigo-600 font-semibold px-4 py-2.5 rounded-xl text-xs transition-colors flex items-center gap-1 whitespace-nowrap cursor-pointer">
                         🔄 Refresh
@@ -314,12 +302,9 @@
         const tagLibraryList = document.getElementById("tag-library-list");
         const locationLibraryList = document.getElementById("location-library-list");
         const memberLibraryList = document.getElementById("member-library-list");
-        const branchLibraryList = document.getElementById("branch-library-list");
-        
         const newTagInput = document.getElementById("new-tag-input");
         const newLocationInput = document.getElementById("new-location-input");
         const newMemberInput = document.getElementById("new-member-input");
-        const newBranchInput = document.getElementById("new-branch-input");
 
         const searchResultsList = document.getElementById("search-results-list");
         const searchQueryInput = document.getElementById("library-search-query");
@@ -335,7 +320,6 @@
         let globalCatalogCache = []; 
         let activeSelectedCategoryFilter = ""; 
         
-        let userBranches = JSON.parse(localStorage.getItem("librify_branches")) || ["Main Branch", "Home Library", "Office"];
         let userTags = JSON.parse(localStorage.getItem("librify_tags")) || ["To Read", "Favorite", "Hardcover", "Borrowed"];
         let userLocations = JSON.parse(localStorage.getItem("librify_locations")) || ["Living Room Main", "Office Bookshelf", "Bedroom Table", "Unassigned / Pile"];
         let householdMembers = JSON.parse(localStorage.getItem("librify_members")) || ["Self", "Partner", "Child"];
@@ -343,14 +327,12 @@
 
         async function syncSettingsToServer() {
             const settingsPayload = {
-                userBranches: userBranches,
                 userTags: userTags,
                 userLocations: userLocations,
                 householdMembers: householdMembers,
                 visibleDashboardFilters: visibleDashboardFilters
             };
             
-            localStorage.setItem("librify_branches", JSON.stringify(userBranches));
             localStorage.setItem("librify_tags", JSON.stringify(userTags));
             localStorage.setItem("librify_locations", JSON.stringify(userLocations));
             localStorage.setItem("librify_members", JSON.stringify(householdMembers));
@@ -380,19 +362,16 @@
                 const settings = responseData.settings;
 
                 if (settings) {
-                    if (settings.userBranches) userBranches = settings.userBranches;
                     if (settings.userTags) userTags = settings.userTags;
                     if (settings.userLocations) userLocations = settings.userLocations;
                     if (settings.householdMembers) householdMembers = settings.householdMembers;
                     if (settings.visibleDashboardFilters) visibleDashboardFilters = settings.visibleDashboardFilters;
 
-                    localStorage.setItem("librify_branches", JSON.stringify(userBranches));
                     localStorage.setItem("librify_tags", JSON.stringify(userTags));
                     localStorage.setItem("librify_locations", JSON.stringify(userLocations));
                     localStorage.setItem("librify_members", JSON.stringify(householdMembers));
                     localStorage.setItem("librify_visible_filters", JSON.stringify(visibleDashboardFilters));
 
-                    renderBranchLibrarySettings();
                     renderTagLibrarySettings();
                     renderLocationLibrarySettings();
                     renderMemberLibrarySettings();
@@ -403,7 +382,6 @@
             }
         }
         
-        renderBranchLibrarySettings();
         renderTagLibrarySettings();
         renderLocationLibrarySettings();
         renderMemberLibrarySettings();
@@ -607,9 +585,7 @@
                     (b.authors && b.authors.toLowerCase().includes(query)) ||
                     (b.isbn && b.isbn.includes(query)) ||
                     (b.categories && b.categories.toLowerCase().includes(query)) ||
-                    (b.genre && b.genre.toLowerCase().includes(query)) ||
-                    (b.branch && b.branch.toLowerCase().includes(query)) ||
-                    (b.notes && b.notes.toLowerCase().includes(query))
+                    (b.genre && b.genre.toLowerCase().includes(query))
                 );
             });
 
@@ -705,14 +681,10 @@
 
                         ${tagsBadgesHTML ? `<div class="flex flex-wrap gap-1 pt-0.5">${tagsBadgesHTML}</div>` : ''}
                         
-                        <div class="flex items-center justify-between pt-1 gap-2 flex-wrap text-[9px]">
-                            <div class="flex items-center gap-1.5 truncate">
-                                ${book.branch ? `<span class="bg-purple-50 text-purple-700 font-semibold px-1.5 py-0.5 rounded truncate">🏢 ${book.branch}</span>` : ''}
-                                <span class="bg-gray-100 font-semibold px-1.5 py-0.5 rounded text-gray-600 truncate max-w-[160px]">📍 ${book.location || 'Unassigned'}</span>
-                            </div>
+                        <div class="flex items-center justify-between pt-1 gap-2">
+                            <span class="text-[9px] bg-gray-100 font-semibold px-1.5 py-0.5 rounded text-gray-600 truncate max-w-[160px]">📍 ${book.location || 'Unassigned'}</span>
                             ${(!isCheckedOut && !isCurrentlyReading) ? statusBadgeHTML : ''}
                         </div>
-                        ${book.notes ? `<p class="text-[10px] text-gray-500 italic truncate pt-0.5">📝 ${book.notes}</p>` : ''}
                         ${(isCheckedOut || isCurrentlyReading) ? statusBadgeHTML : ''}
                     </div>
                 `;
@@ -784,9 +756,7 @@
         
             const statusValue = document.getElementById("input-status").value;
             currentScannedBook.uniqueId = selectedUniqueId; 
-            currentScannedBook.branch = document.getElementById("input-branch").value;
             currentScannedBook.location = document.getElementById("input-location").value; 
-            currentScannedBook.notes = document.getElementById("input-notes").value;
             currentScannedBook.status = statusValue; 
             
             if (statusValue === "Checked Out") {
@@ -1067,8 +1037,6 @@
                 description: vol.description || "No description available.", 
                 language: vol.language ? vol.language.toUpperCase() : "N/A", 
                 dimensions: "N/A", 
-                branch: "",
-                notes: "",
                 dateBorrowed: "", 
                 dueDate: "", 
                 reader: ""
@@ -1113,8 +1081,6 @@
                 description: "Manually entered title.",
                 language: "EN",
                 dimensions: "N/A",
-                branch: "",
-                notes: "",
                 dateBorrowed: "",
                 dueDate: "",
                 reader: ""
@@ -1131,20 +1097,18 @@
                 return;
             }
 
-            const headers = ["Unique ID", "ISBN", "Title", "Authors", "Status", "Branch", "Location", "Tags", "Borrower", "Due Date", "Reader", "Notes"];
+            const headers = ["Unique ID", "ISBN", "Title", "Authors", "Status", "Location", "Tags", "Borrower", "Due Date", "Reader"];
             const rows = globalCatalogCache.map(b => [
                 `"${b.uniqueId || ''}"`,
                 `"${b.isbn || ''}"`,
                 `"${(b.title || '').replace(/"/g, '""')}"`,
                 `"${(b.authors || '').replace(/"/g, '""')}"`,
                 `"${b.status || 'Available'}"`,
-                `"${b.branch || ''}"`,
                 `"${b.location || ''}"`,
                 `"${b.tags || ''}"`,
                 `"${b.borrower || ''}"`,
                 `"${b.dueDate || ''}"`,
-                `"${b.reader || ''}"`,
-                `"${(b.notes || '').replace(/"/g, '""')}"`
+                `"${b.reader || ''}"`
             ]);
 
             const csvContent = "data:text/csv;charset=utf-8," + [headers.join(","), ...rows.map(e => e.join(","))].join("\n");
@@ -1160,52 +1124,6 @@
         function toggleAppSettingsPanel(id) { 
             const el = document.getElementById(id); 
             if (el) el.classList.toggle("hidden"); 
-        }
-
-        function renderBranchLibrarySettings() {
-            if (!branchLibraryList) return;
-            branchLibraryList.innerHTML = "";
-            userBranches.forEach((b, i) => {
-                const row = document.createElement("div");
-                row.className = "flex items-center justify-between bg-gray-50 border border-gray-200 p-2 rounded-xl text-xs font-medium";
-                row.innerHTML = `
-                    <span>🏢 ${b}</span>
-                    <button onclick="deleteCustomBranch(${i})" class="text-gray-400 hover:text-red-500 font-bold px-1 ml-2 cursor-pointer">&times;</button>
-                `;
-                branchLibraryList.appendChild(row);
-            });
-        }
-
-        function addNewCustomBranch() {
-            const v = newBranchInput.value.trim();
-            if (v && !userBranches.includes(v)) {
-                userBranches.push(v);
-                newBranchInput.value = "";
-                syncSettingsToServer();
-                renderBranchLibrarySettings();
-                if (currentScannedBook) refreshActiveFormBranchDropdown();
-            }
-        }
-
-        function deleteCustomBranch(i) {
-            userBranches.splice(i, 1);
-            syncSettingsToServer();
-            renderBranchLibrarySettings();
-            if (currentScannedBook) refreshActiveFormBranchDropdown();
-        }
-
-        function refreshActiveFormBranchDropdown() {
-            const d = document.getElementById("input-branch");
-            if (!d) return;
-            const p = d.value;
-            d.innerHTML = "";
-            userBranches.forEach(b => {
-                const o = document.createElement("option");
-                o.value = b;
-                o.innerText = b;
-                d.appendChild(o);
-            });
-            if (userBranches.includes(p)) d.value = p;
         }
         
         function renderMemberLibrarySettings() {
@@ -1525,26 +1443,8 @@
                         </div>
                     </div>
                     
-                    <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                        <div class="space-y-1">
-                            <label class="block text-xs font-bold text-gray-600 uppercase tracking-wider">Library Branch</label>
-                            <select id="input-branch" class="w-full bg-gray-50 border border-gray-200 rounded-lg p-2.5 text-xs font-medium"></select>
-                        </div>
-                        <div class="space-y-1">
-                            <label class="block text-xs font-bold text-gray-600 uppercase tracking-wider">Storage Shelf Location Slot</label>
-                            <select id="input-location" class="w-full bg-gray-50 border border-gray-200 rounded-lg p-2.5 text-xs font-medium"></select>
-                        </div>
-                    </div>
-
-                    <div class="space-y-1">
-                        <label class="block text-xs font-bold text-gray-600 uppercase tracking-wider">Collection Tracking Badges</label>
-                        <div id="tag-chips-container" class="flex flex-wrap gap-2 pt-1"></div>
-                    </div>
-
-                    <div class="space-y-1">
-                        <label class="block text-xs font-bold text-gray-600 uppercase tracking-wider">Item Notes & Remarks</label>
-                        <textarea id="input-notes" rows="2" placeholder="Add custom notes (e.g. edition details, condition, notes)..." class="w-full bg-gray-50 border border-gray-200 rounded-lg p-2.5 text-xs font-medium focus:outline-none focus:ring-1 focus:ring-indigo-500"></textarea>
-                    </div>
+                    <div class="space-y-1"><label class="block text-xs font-bold text-gray-600 uppercase tracking-wider">Storage Shelf Location Slot</label><select id="input-location" class="w-full bg-gray-50 border border-gray-200 rounded-lg p-2.5 text-xs font-medium"></select></div>
+                    <div class="space-y-1"><label class="block text-xs font-bold text-gray-600 uppercase tracking-wider">Collection Tracking Badges</label><div id="tag-chips-container" class="flex flex-wrap gap-2 pt-1"></div></div>
                     
                     <div class="flex gap-2 pt-2">
                         <button id="submit-to-sheet-btn" onclick="submitDataToGoogleSheets()" class="flex-grow bg-indigo-600 hover:bg-indigo-700 text-white font-semibold py-3 rounded-xl text-sm shadow-sm cursor-pointer transition-all flex justify-center items-center gap-2">
@@ -1581,7 +1481,6 @@
         }
 
         function setupFormInteractions() { 
-            refreshActiveFormBranchDropdown();
             refreshActiveFormLocationDropdown(); 
             refreshActiveFormMemberDropdown();
             refreshActiveFormTagChips(); 
@@ -1626,17 +1525,13 @@
             currentScannedBook.coverImage = c.coverImage || c.thumbnail || "";
             currentScannedBook.status = c.status || "Available";
             currentScannedBook.tags = c.tags || "";
-            currentScannedBook.branch = c.branch || "";
-            currentScannedBook.notes = c.notes || "";
             
             document.getElementById("copy-badge-indicator").innerText = `Modifying: Copy ${i + 1} (${selectedUniqueId})`; 
         
-            if (userBranches.includes(c.branch)) document.getElementById("input-branch").value = c.branch;
             if (userLocations.includes(c.location)) document.getElementById("input-location").value = c.location; 
             document.getElementById("input-status").value = c.status || "Available"; 
             document.getElementById("input-borrower").value = c.borrower || "";
             document.getElementById("input-duedate").value = c.dueDate || "";
-            document.getElementById("input-notes").value = c.notes || "";
             
             if (c.tags) {
                 const existingTags = c.tags.split(",").map(t => t.trim());
@@ -1665,7 +1560,6 @@
             document.getElementById("input-status").value = "Available"; 
             document.getElementById("input-borrower").value = ""; 
             document.getElementById("input-duedate").value = "";
-            document.getElementById("input-notes").value = "";
             currentScannedBook.dateBorrowed = "";
             toggleStatusDependentFields();
             resetTagChipsUI(); 
