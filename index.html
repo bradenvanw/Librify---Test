@@ -57,6 +57,18 @@
             
             <p class="text-[11px] text-gray-400 italic">Toggle the checkboxes next to any parameter to pinpoint exactly which filters appear on your main search dashboard.</p>
             
+            <!-- Household Members Manager Component -->
+            <div class="space-y-2">
+                <h3 class="text-xs font-bold text-gray-500 uppercase tracking-wider">👥 Household Members</h3>
+                <div class="flex gap-2">
+                    <input type="text" id="new-member-input" placeholder="e.g., Alex..." class="flex-grow bg-gray-50 border border-gray-200 rounded-lg p-2 text-xs focus:outline-none focus:ring-1 focus:ring-indigo-500">
+                    <button onclick="addNewHouseholdMember()" class="bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-bold px-4 py-2 rounded-lg cursor-pointer">Add</button>
+                </div>
+                <div id="member-library-list" class="flex flex-col gap-1.5 pt-1 max-h-32 overflow-y-auto pr-1"></div>
+            </div>
+
+            <hr class="border-gray-100">
+
             <!-- Location Sub-Manager Component -->
             <div class="space-y-2">
                 <h3 class="text-xs font-bold text-gray-500 uppercase tracking-wider">📍 Custom Storage Locations</h3>
@@ -83,10 +95,13 @@
         <!-- Dynamic Navigation Tabs -->
         <div class="flex bg-gray-200 p-1 rounded-xl mb-6">
             <button id="tab-search-mode" onclick="switchAppMode('search')" class="flex-1 text-center py-2 text-xs font-bold rounded-lg bg-white text-gray-800 shadow-xs cursor-pointer transition-all">
-                🔍 Search Library
+                🔍 Search
+            </button>
+            <button id="tab-status-mode" onclick="switchAppMode('status')" class="flex-1 text-center py-2 text-xs font-bold rounded-lg text-gray-600 hover:text-gray-900 cursor-pointer transition-all">
+                📊 Status
             </button>
             <button id="tab-scan-mode" onclick="switchAppMode('scan')" class="flex-1 text-center py-2 text-xs font-bold rounded-lg text-gray-600 hover:text-gray-900 cursor-pointer transition-all">
-                📷 Scanner & Log
+                📷 Scanner
             </button>
         </div>
 
@@ -120,6 +135,15 @@
                         🔄 Refresh
                     </button>
                 </div>
+
+                <!-- Sorting Controls -->
+                <div class="flex items-center justify-between text-xs pt-1">
+                    <span class="font-bold text-gray-500 uppercase tracking-wider">Sort By:</span>
+                    <select id="sort-order-select" onchange="filterLocalCatalogCache()" class="bg-gray-50 border border-gray-200 rounded-lg p-1.5 text-xs font-semibold focus:outline-none focus:ring-1 focus:ring-indigo-500">
+                        <option value="title-asc">Title (A – Z)</option>
+                        <option value="author-asc">Author (A – Z)</option>
+                    </select>
+                </div>
                 
                 <div class="space-y-1.5">
                     <div class="text-[10px] font-bold text-gray-400 uppercase tracking-wider flex justify-between items-center">
@@ -133,6 +157,25 @@
             </div>
 
             <div id="search-results-list" class="space-y-3"></div>
+        </div>
+
+        <!-- ================= STATUS MODE VIEW ================= -->
+        <div id="view-status-mode" class="hidden space-y-6">
+            <!-- Currently Reading Section -->
+            <div class="bg-white rounded-2xl shadow-sm border border-gray-100 p-5 space-y-3">
+                <h3 class="text-sm font-bold text-indigo-600 uppercase tracking-wider flex items-center gap-2">
+                    📖 Currently Reading
+                </h3>
+                <div id="reading-list-container" class="space-y-3"></div>
+            </div>
+
+            <!-- Checked Out Section -->
+            <div class="bg-white rounded-2xl shadow-sm border border-gray-100 p-5 space-y-3">
+                <h3 class="text-sm font-bold text-amber-600 uppercase tracking-wider flex items-center gap-2">
+                    🔴 Checked Out
+                </h3>
+                <div id="checkedout-list-container" class="space-y-3"></div>
+            </div>
         </div>
 
         <!-- ================= SCAN MODE VIEW ================= -->
@@ -177,8 +220,11 @@
         
         const viewScanMode = document.getElementById("view-scan-mode");
         const viewSearchMode = document.getElementById("view-search-mode");
+        const viewStatusMode = document.getElementById("view-status-mode");
+        
         const tabScanMode = document.getElementById("tab-scan-mode");
         const tabSearchMode = document.getElementById("tab-search-mode");
+        const tabStatusMode = document.getElementById("tab-status-mode");
 
         const actionBtnContainer = document.getElementById("action-btn-container");
         const toggleScanBtn = document.getElementById("toggle-scan-btn");
@@ -190,8 +236,10 @@
         const sessionLog = document.getElementById("session-log");
         const tagLibraryList = document.getElementById("tag-library-list");
         const locationLibraryList = document.getElementById("location-library-list");
+        const memberLibraryList = document.getElementById("member-library-list");
         const newTagInput = document.getElementById("new-tag-input");
         const newLocationInput = document.getElementById("new-location-input");
+        const newMemberInput = document.getElementById("new-member-input");
 
         const searchResultsList = document.getElementById("search-results-list");
         const searchQueryInput = document.getElementById("library-search-query");
@@ -210,27 +258,37 @@
         // Base structures
         let userTags = JSON.parse(localStorage.getItem("librify_tags")) || ["To Read", "Favorite", "Hardcover", "Borrowed"];
         let userLocations = JSON.parse(localStorage.getItem("librify_locations")) || ["Living Room Main", "Office Bookshelf", "Bedroom Table", "Unassigned / Pile"];
-        
+        let householdMembers = JSON.parse(localStorage.getItem("librify_members")) || ["Self", "Partner", "Child"];
+
         // Filter preference states (matches item string arrays)
         let visibleDashboardFilters = JSON.parse(localStorage.getItem("librify_visible_filters")) || [...userLocations, ...userTags];
 
         renderTagLibrarySettings();
         renderLocationLibrarySettings();
+        renderMemberLibrarySettings();
         renderQuickFilterPillsModule();
         
         fetchAllBooksFromGoogleSheet();
 
         function switchAppMode(mode) {
+            stopScanning();
+            viewScanMode.classList.add("hidden");
+            viewSearchMode.classList.add("hidden");
+            viewStatusMode.classList.add("hidden");
+
+            tabScanMode.className = "flex-1 text-center py-2 text-xs font-bold rounded-lg text-gray-600 hover:text-gray-900 cursor-pointer";
+            tabSearchMode.className = "flex-1 text-center py-2 text-xs font-bold rounded-lg text-gray-600 hover:text-gray-900 cursor-pointer";
+            tabStatusMode.className = "flex-1 text-center py-2 text-xs font-bold rounded-lg text-gray-600 hover:text-gray-900 cursor-pointer";
+
             if (mode === 'scan') {
                 viewScanMode.classList.remove("hidden");
-                viewSearchMode.classList.add("hidden");
                 tabScanMode.className = "flex-1 text-center py-2 text-xs font-bold rounded-lg bg-white text-gray-800 shadow-xs cursor-pointer";
-                tabSearchMode.className = "flex-1 text-center py-2 text-xs font-bold rounded-lg text-gray-600 hover:text-gray-900 cursor-pointer";
+            } else if (mode === 'status') {
+                viewStatusMode.classList.remove("hidden");
+                tabStatusMode.className = "flex-1 text-center py-2 text-xs font-bold rounded-lg bg-white text-gray-800 shadow-xs cursor-pointer";
+                renderStatusTab();
             } else {
-                stopScanning();
-                viewScanMode.classList.add("hidden");
                 viewSearchMode.classList.remove("hidden");
-                tabScanMode.className = "flex-1 text-center py-2 text-xs font-bold rounded-lg text-gray-600 hover:text-gray-900 cursor-pointer";
                 tabSearchMode.className = "flex-1 text-center py-2 text-xs font-bold rounded-lg bg-white text-gray-800 shadow-xs cursor-pointer";
                 renderQuickFilterPillsModule();
                 if (globalCatalogCache.length === 0) fetchAllBooksFromGoogleSheet();
@@ -244,14 +302,14 @@
             quickFilterPillsRow.appendChild(allBtn);
 
             userLocations.forEach(loc => {
-                if (!visibleDashboardFilters.includes(loc)) return; // Skipped if hidden by settings check
+                if (!visibleDashboardFilters.includes(loc)) return;
                 const btn = createPillElement(`📍 ${loc}`, loc);
                 if (activeSelectedCategoryFilter === loc) btn.classList.add("bg-indigo-600", "text-white", "border-indigo-600");
                 quickFilterPillsRow.appendChild(btn);
             });
 
             userTags.forEach(tag => {
-                if (!visibleDashboardFilters.includes(tag)) return; // Skipped if hidden by settings check
+                if (!visibleDashboardFilters.includes(tag)) return;
                 const btn = createPillElement(`🏷️ ${tag}`, tag);
                 if (activeSelectedCategoryFilter === tag) btn.classList.add("bg-indigo-600", "text-white", "border-indigo-600");
                 quickFilterPillsRow.appendChild(btn);
@@ -298,13 +356,13 @@
             filterLocalCatalogCache();
         }
 
-        function checkItemOverdueStatus(dateString) {
-            if (!dateString) return false;
-            const borrowDate = new Date(dateString);
-            if (isNaN(borrowDate.getTime())) return false;
-            const diffTime = Math.abs(new Date() - borrowDate);
-            const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
-            return diffDays > 14;
+        function checkItemOverdueStatus(dueDateString) {
+            if (!dueDateString) return false;
+            const dueDate = new Date(dueDateString);
+            if (isNaN(dueDate.getTime())) return false;
+            const today = new Date();
+            today.setHours(0, 0, 0, 0);
+            return dueDate < today;
         }
 
         function runDatabaseAnalyticsEngine() {
@@ -320,9 +378,9 @@
             
             globalCatalogCache.forEach(b => {
                 if (b.title) uniqueTitlesMap.add(b.title.trim().toLowerCase());
-                if (b.status !== "Checked Out") {
+                if (b.status === "Available" || !b.status) {
                     availableCount++;
-                } else if (b.dateBorrowed && checkItemOverdueStatus(b.dateBorrowed)) {
+                } else if (b.status === "Checked Out" && b.dueDate && checkItemOverdueStatus(b.dueDate)) {
                     overdueCount++;
                 }
             });
@@ -370,9 +428,10 @@
         function filterLocalCatalogCache() {
             const query = searchQueryInput.value.toLowerCase().trim();
             const categoryFilter = activeSelectedCategoryFilter.toLowerCase();
+            const sortOrder = document.getElementById("sort-order-select").value;
             searchResultsList.innerHTML = "";
         
-            const filtered = globalCatalogCache.filter(b => {
+            let filtered = globalCatalogCache.filter(b => {
                 if (categoryFilter !== "") {
                     const matchLoc = b.location && b.location.toLowerCase() === categoryFilter;
                     const matchTag = b.tags && b.tags.toLowerCase().split(", ").includes(categoryFilter);
@@ -384,6 +443,19 @@
                     (b.authors && b.authors.toLowerCase().includes(query)) ||
                     (b.isbn && b.isbn.includes(query))
                 );
+            });
+
+            // Sorting logic
+            filtered.sort((a, b) => {
+                if (sortOrder === "author-asc") {
+                    const authorA = (a.authors || "").toLowerCase();
+                    const authorB = (b.authors || "").toLowerCase();
+                    return authorA.localeCompare(authorB);
+                } else {
+                    const titleA = (a.title || "").toLowerCase();
+                    const titleB = (b.title || "").toLowerCase();
+                    return titleA.localeCompare(titleB);
+                }
             });
         
             if (categoryFilter === "" && query === "") {
@@ -399,7 +471,8 @@
         
             filtered.forEach(book => {
                 const isCheckedOut = book.status === "Checked Out";
-                const isOverdue = isCheckedOut && checkItemOverdueStatus(book.dateBorrowed);
+                const isCurrentlyReading = book.status === "Currently Reading";
+                const isOverdue = isCheckedOut && checkItemOverdueStatus(book.dueDate);
                 let displayYear = "N/A";
                 if (book.publishedDate) {
                     const match = book.publishedDate.toString().match(/\d{4}/);
@@ -416,9 +489,14 @@
                 };
         
                 const overdueBadge = isOverdue ? `<span class="bg-red-600 text-white text-[8px] font-black uppercase px-1 rounded tracking-wider animate-pulse">Overdue</span>` : '';
-                const checkoutBadgeHTML = isCheckedOut 
-                    ? `<div class="text-[10px] text-red-700 bg-red-50/70 px-2 py-1 rounded-md font-medium border border-red-100 mt-1 flex justify-between items-center gap-1"><span class="truncate">🗓️ Out to: <b>${book.borrower || 'Unknown'}</b></span><span class="flex items-center gap-1 shrink-0">${overdueBadge}<span class="font-bold uppercase tracking-wide text-[8px] px-1 bg-red-200 rounded text-red-800">Out</span></span></div>`
-                    : '';
+                
+                let statusBadgeHTML = '<span class="text-[9px] font-bold text-emerald-600 bg-green-50 px-1.5 py-0.5 rounded flex-shrink-0">Available</span>';
+                
+                if (isCheckedOut) {
+                    statusBadgeHTML = `<div class="text-[10px] text-red-700 bg-red-50/70 px-2 py-1 rounded-md font-medium border border-red-100 mt-1 flex justify-between items-center gap-1 w-full"><span class="truncate">🗓️ Out to: <b>${book.borrower || 'Unknown'}</b>${book.dueDate ? ` (Due: ${book.dueDate})` : ''}</span><span class="flex items-center gap-1 shrink-0">${overdueBadge}<span class="font-bold uppercase tracking-wide text-[8px] px-1 bg-red-200 rounded text-red-800">Out</span></span></div>`;
+                } else if (isCurrentlyReading) {
+                    statusBadgeHTML = `<div class="text-[10px] text-indigo-700 bg-indigo-50/70 px-2 py-1 rounded-md font-medium border border-indigo-100 mt-1 flex justify-between items-center gap-1 w-full"><span class="truncate">📖 Reading: <b>${book.reader || 'Unknown'}</b></span><span class="font-bold uppercase tracking-wide text-[8px] px-1 bg-indigo-200 rounded text-indigo-800">Reading</span></div>`;
+                }
         
                 card.innerHTML = `
                     <div class="w-14 h-20 bg-gray-50 border rounded-md overflow-hidden flex-shrink-0 shadow-2xs">
@@ -430,12 +508,59 @@
                             <p class="text-[11px] font-medium text-gray-500 truncate">by ${book.authors || 'Unknown Author'}</p>
                         </div>
                         <div class="flex items-center gap-2 text-[10px] text-gray-400 font-medium"><span>📅 ${displayYear}</span><span>•</span><span>📖 ${book.pageCount || 'N/A'} pgs</span></div>
-                        <div class="flex items-center justify-between pt-1 gap-2"><span class="text-[9px] bg-gray-100 font-semibold px-1.5 py-0.5 rounded text-gray-600 truncate max-w-[160px]">📍 ${book.location || 'Unassigned'}</span>${!isCheckedOut ? '<span class="text-[9px] font-bold text-emerald-600 bg-green-50 px-1.5 py-0.5 rounded flex-shrink-0">Available</span>' : ''}</div>
-                        ${checkoutBadgeHTML}
+                        <div class="flex items-center justify-between pt-1 gap-2"><span class="text-[9px] bg-gray-100 font-semibold px-1.5 py-0.5 rounded text-gray-600 truncate max-w-[160px]">📍 ${book.location || 'Unassigned'}</span>${(!isCheckedOut && !isCurrentlyReading) ? statusBadgeHTML : ''}</div>
+                        ${(isCheckedOut || isCurrentlyReading) ? statusBadgeHTML : ''}
                     </div>
                 `;
                 searchResultsList.appendChild(card);
             });
+        }
+
+        function renderStatusTab() {
+            const readingContainer = document.getElementById("reading-list-container");
+            const checkedOutContainer = document.getElementById("checkedout-list-container");
+            
+            readingContainer.innerHTML = "";
+            checkedOutContainer.innerHTML = "";
+
+            const readingBooks = globalCatalogCache.filter(b => b.status === "Currently Reading");
+            const checkedOutBooks = globalCatalogCache.filter(b => b.status === "Checked Out");
+
+            if (readingBooks.length === 0) {
+                readingContainer.innerHTML = `<div class="text-xs text-gray-400 italic py-2">No books currently being read.</div>`;
+            } else {
+                readingBooks.forEach(book => {
+                    const item = document.createElement("div");
+                    item.className = "flex items-center justify-between bg-indigo-50/50 p-3 rounded-xl border border-indigo-100 text-xs";
+                    item.innerHTML = `
+                        <div>
+                            <p class="font-bold text-gray-900">${book.title}</p>
+                            <p class="text-indigo-600 font-medium">Reader: <b>${book.reader || 'Unassigned'}</b></p>
+                        </div>
+                        <button onclick="isbnInput.value='${book.isbn}'; checkExistingAndFetchMetadata('${book.isbn}', null);" class="text-[10px] bg-white border border-indigo-200 px-2.5 py-1 rounded-lg font-bold text-indigo-600 cursor-pointer hover:bg-indigo-50">Manage</button>
+                    `;
+                    readingContainer.appendChild(item);
+                });
+            }
+
+            if (checkedOutBooks.length === 0) {
+                checkedOutContainer.innerHTML = `<div class="text-xs text-gray-400 italic py-2">No books currently checked out.</div>`;
+            } else {
+                checkedOutBooks.forEach(book => {
+                    const isOverdue = checkItemOverdueStatus(book.dueDate);
+                    const item = document.createElement("div");
+                    item.className = `flex items-center justify-between p-3 rounded-xl border text-xs ${isOverdue ? 'bg-red-50/60 border-red-200' : 'bg-gray-50 border-gray-200'}`;
+                    item.innerHTML = `
+                        <div>
+                            <p class="font-bold text-gray-900">${book.title}</p>
+                            <p class="text-gray-600">Borrower: <b>${book.borrower || 'Unknown'}</b> ${book.dueDate ? `| Due: <b>${book.dueDate}</b>` : ''}</p>
+                            ${isOverdue ? '<span class="inline-block mt-1 bg-red-600 text-white text-[9px] font-black uppercase px-1.5 py-0.5 rounded">Overdue</span>' : ''}
+                        </div>
+                        <button onclick="isbnInput.value='${book.isbn}'; checkExistingAndFetchMetadata('${book.isbn}', null);" class="text-[10px] bg-white border border-gray-300 px-2.5 py-1 rounded-lg font-bold text-gray-700 cursor-pointer hover:bg-gray-100">Manage</button>
+                    `;
+                    checkedOutContainer.appendChild(item);
+                });
+            }
         }
 
         async function submitDataToGoogleSheets() { 
@@ -444,14 +569,24 @@
             currentScannedBook.uniqueId = selectedUniqueId; 
             currentScannedBook.location = document.getElementById("input-location").value; 
             currentScannedBook.status = statusValue; 
-            currentScannedBook.borrower = document.getElementById("input-borrower").value; 
             
             if (statusValue === "Checked Out") {
+                currentScannedBook.borrower = document.getElementById("input-borrower").value;
+                currentScannedBook.dueDate = document.getElementById("input-duedate").value;
+                currentScannedBook.reader = "";
                 if(!currentScannedBook.dateBorrowed) {
                     const today = new Date();
                     currentScannedBook.dateBorrowed = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}-${String(today.getDate()).padStart(2, '0')}`;
                 }
+            } else if (statusValue === "Currently Reading") {
+                currentScannedBook.reader = document.getElementById("input-reader").value;
+                currentScannedBook.borrower = "";
+                currentScannedBook.dueDate = "";
+                currentScannedBook.dateBorrowed = "";
             } else {
+                currentScannedBook.borrower = "";
+                currentScannedBook.dueDate = "";
+                currentScannedBook.reader = "";
                 currentScannedBook.dateBorrowed = ""; 
             }
             
@@ -525,7 +660,7 @@
                         authors: vol.authors ? vol.authors.join(", ") : "Unknown Author", publisher: vol.publisher || "N/A", 
                         publishedDate: vol.publishedDate || "N/A", thumbnail: vol.imageLinks && vol.imageLinks.thumbnail ? vol.imageLinks.thumbnail.replace("http://", "https://") : 'https://images.unsplash.com/photo-1543002588-bfa74002ed7e?q=80&w=300', 
                         genre: vol.categories ? vol.categories[0] : "General Reading", pageCount: vol.pageCount || "N/A",
-                        description: vol.description || "No description available.", language: vol.language ? vol.language.toUpperCase() : "N/A", dimensions: "N/A", dateBorrowed: ""
+                        description: vol.description || "No description available.", language: vol.language ? vol.language.toUpperCase() : "N/A", dimensions: "N/A", dateBorrowed: "", dueDate: "", reader: ""
                     }; 
                     showStatus("Book profile matched!", "success"); 
                     renderIntegratedLayout(); 
@@ -552,6 +687,51 @@
             if (el) el.classList.toggle("hidden"); 
         }
         
+        // Household Members Manager
+        function renderMemberLibrarySettings() {
+            memberLibraryList.innerHTML = "";
+            householdMembers.forEach((m, i) => {
+                const row = document.createElement("div");
+                row.className = "flex items-center justify-between bg-gray-50 border border-gray-200 p-2 rounded-xl text-xs font-medium";
+                row.innerHTML = `
+                    <span>👤 ${m}</span>
+                    <button onclick="deleteHouseholdMember(${i})" class="text-gray-400 hover:text-red-500 font-bold px-1 ml-2 cursor-pointer">&times;</button>
+                `;
+                memberLibraryList.appendChild(row);
+            });
+            localStorage.setItem("librify_members", JSON.stringify(householdMembers));
+        }
+
+        function addNewHouseholdMember() {
+            const v = newMemberInput.value.trim();
+            if (v && !householdMembers.includes(v)) {
+                householdMembers.push(v);
+                newMemberInput.value = "";
+                renderMemberLibrarySettings();
+                if (currentScannedBook) refreshActiveFormMemberDropdown();
+            }
+        }
+
+        function deleteHouseholdMember(i) {
+            householdMembers.splice(i, 1);
+            renderMemberLibrarySettings();
+            if (currentScannedBook) refreshActiveFormMemberDropdown();
+        }
+
+        function refreshActiveFormMemberDropdown() {
+            const d = document.getElementById("input-reader");
+            if (!d) return;
+            const p = d.value;
+            d.innerHTML = "";
+            householdMembers.forEach(m => {
+                const o = document.createElement("option");
+                o.value = m;
+                o.innerText = m;
+                d.appendChild(o);
+            });
+            if (householdMembers.includes(p)) d.value = p;
+        }
+
         // Location List Manager
         function renderLocationLibrarySettings() { 
             locationLibraryList.innerHTML = ""; 
@@ -576,7 +756,7 @@
             const v = newLocationInput.value.trim(); 
             if (v && !userLocations.includes(v)) { 
                 userLocations.push(v); 
-                visibleDashboardFilters.push(v); // Default pin it
+                visibleDashboardFilters.push(v);
                 localStorage.setItem("librify_visible_filters", JSON.stringify(visibleDashboardFilters));
                 newLocationInput.value = ""; 
                 renderLocationLibrarySettings(); 
@@ -631,7 +811,7 @@
             const v = newTagInput.value.trim(); 
             if (v && !userTags.includes(v)) { 
                 userTags.push(v); 
-                visibleDashboardFilters.push(v); // Default pin it
+                visibleDashboardFilters.push(v);
                 localStorage.setItem("librify_visible_filters", JSON.stringify(visibleDashboardFilters));
                 newTagInput.value = ""; 
                 renderTagLibrarySettings(); 
@@ -666,7 +846,7 @@
         function renderIntegratedLayout() { 
             const subtitleHTML = currentScannedBook.subtitle ? `<p class="text-xs text-gray-500 italic -mt-1 leading-tight">${currentScannedBook.subtitle}</p>` : '';
             const descriptionHTML = currentScannedBook.description ? `<div class="bg-white rounded-2xl shadow-sm border border-gray-100 p-4 text-xs text-gray-600 leading-relaxed text-left"><span class="font-bold text-gray-400 block text-[9px] uppercase tracking-wider mb-1">Synopsis</span>${currentScannedBook.description}</div>` : '';
-            const isCopyOverdue = currentScannedBook.status === "Checked Out" && checkItemOverdueStatus(currentScannedBook.dateBorrowed);
+            const isCopyOverdue = currentScannedBook.status === "Checked Out" && checkItemOverdueStatus(currentScannedBook.dueDate);
             const overdueBannerHTML = isCopyOverdue ? `<div class="bg-red-50 border border-red-200 text-red-800 p-3 rounded-xl text-xs font-bold text-center animate-pulse">⚠️ ATTENTION: Marked OVERDUE!</div>` : '';
             const borrowedDateHTML = (currentScannedBook.status === "Checked Out" && currentScannedBook.dateBorrowed) ? `<div class="bg-amber-50 border border-amber-200 rounded-xl p-3 text-xs text-amber-800 flex justify-between items-center"><span class="font-medium">Tracking Borrow Date Out</span><span class="font-mono font-bold">${currentScannedBook.dateBorrowed}</span></div>` : '';
         
@@ -681,7 +861,6 @@
                     </div>
                 </div>
                 
-                <!-- Synopsis is now correctly injected back right here -->
                 ${descriptionHTML}
                 
                 <div class="bg-white rounded-2xl shadow-sm border border-gray-100 p-5 space-y-4">
@@ -695,12 +874,28 @@
                     <div class="bg-gray-50 p-4 rounded-xl border border-gray-200 space-y-3">
                         <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
                             <label class="text-xs font-bold text-gray-600 uppercase tracking-wider">Availability Status</label>
-                            <select id="input-status" class="bg-white border rounded-lg text-xs p-2 font-semibold" onchange="toggleBorrowerFieldVisibility()">
+                            <select id="input-status" class="bg-white border rounded-lg text-xs p-2 font-semibold" onchange="toggleStatusDependentFields()">
                                 <option value="Available">🟢 Available / Return</option>
+                                <option value="Currently Reading">📖 Currently Reading</option>
                                 <option value="Checked Out">🔴 Checked Out</option>
                             </select>
                         </div>
-                        <div id="borrower-input-container" class="hidden space-y-1"><input type="text" id="input-borrower" placeholder="Enter friend's name..." class="w-full bg-white border rounded-lg p-2.5 text-xs"></div>
+                        
+                        <div id="reader-input-container" class="hidden space-y-1">
+                            <label class="block text-[10px] font-bold text-gray-500 uppercase">Assigned Reader</label>
+                            <select id="input-reader" class="w-full bg-white border rounded-lg p-2 text-xs font-medium"></select>
+                        </div>
+
+                        <div id="borrower-input-container" class="hidden space-y-2">
+                            <div>
+                                <label class="block text-[10px] font-bold text-gray-500 uppercase">Borrower Name</label>
+                                <input type="text" id="input-borrower" placeholder="Enter friend's name..." class="w-full bg-white border rounded-lg p-2 text-xs">
+                            </div>
+                            <div>
+                                <label class="block text-[10px] font-bold text-gray-500 uppercase">Due Date</label>
+                                <input type="date" id="input-duedate" class="w-full bg-white border rounded-lg p-2 text-xs">
+                            </div>
+                        </div>
                     </div>
                     
                     <div class="space-y-1"><label class="block text-xs font-bold text-gray-600 uppercase tracking-wider">Storage Shelf Location Slot</label><select id="input-location" class="w-full bg-gray-50 border rounded-lg p-2.5 text-xs font-medium"></select></div>
@@ -711,17 +906,30 @@
             setupFormInteractions(); 
         }
         
-        function toggleBorrowerFieldVisibility() {
+        function toggleStatusDependentFields() {
             const statusSelect = document.getElementById("input-status");
             const borrowerContainer = document.getElementById("borrower-input-container");
-            if (statusSelect && borrowerContainer) {
-                if (statusSelect.value === "Checked Out") borrowerContainer.classList.remove("hidden");
-                else { borrowerContainer.classList.add("hidden"); document.getElementById("input-borrower").value = ""; }
+            const readerContainer = document.getElementById("reader-input-container");
+            
+            if (!statusSelect) return;
+
+            if (statusSelect.value === "Checked Out") {
+                borrowerContainer.classList.remove("hidden");
+                readerContainer.classList.add("hidden");
+            } else if (statusSelect.value === "Currently Reading") {
+                readerContainer.classList.remove("hidden");
+                borrowerContainer.classList.add("hidden");
+            } else {
+                borrowerContainer.classList.add("hidden");
+                readerContainer.classList.add("hidden");
+                document.getElementById("input-borrower").value = "";
+                document.getElementById("input-duedate").value = "";
             }
         }
 
         function setupFormInteractions() { 
             refreshActiveFormLocationDropdown(); 
+            refreshActiveFormMemberDropdown();
             refreshActiveFormTagChips(); 
             const cbl = document.getElementById("copy-buttons-list"); 
             const cbi = document.getElementById("copy-badge-indicator"); 
@@ -731,7 +939,12 @@
                     const btn = document.createElement("button"); 
                     btn.type = "button"; 
                     btn.className = "px-3 py-1.5 text-xs font-semibold rounded-lg border bg-white shadow-xs cursor-pointer"; 
-                    btn.innerText = `Copy ${idx + 1} ${copy.status === "Checked Out" ? "🔴" : "🟢"}`; 
+                    
+                    let statusEmoji = "🟢";
+                    if (copy.status === "Checked Out") statusEmoji = "🔴";
+                    else if (copy.status === "Currently Reading") statusEmoji = "📖";
+
+                    btn.innerText = `Copy ${idx + 1} ${statusEmoji}`; 
                     btn.onclick = () => loadSelectedCopyProfile(idx); 
                     cbl.appendChild(btn); 
                 }); 
@@ -746,7 +959,7 @@
                 selectedUniqueId = `${currentScannedBook.isbn}-1`; 
                 cbi.innerText = "Creating initial profile (Copy 1)"; 
             } 
-            toggleBorrowerFieldVisibility();
+            toggleStatusDependentFields();
         }
 
         function loadSelectedCopyProfile(i) { 
@@ -754,6 +967,8 @@
             const c = activeCopiesData[i]; 
             selectedUniqueId = c.uniqueId; 
             currentScannedBook.dateBorrowed = c.dateBorrowed || "";
+            currentScannedBook.dueDate = c.dueDate || "";
+            currentScannedBook.reader = c.reader || "";
             currentScannedBook.status = c.status || "Available";
             document.getElementById("copy-badge-indicator").innerText = `Modifying: Copy ${i + 1} (${selectedUniqueId})`; 
             
@@ -765,7 +980,10 @@
             if (userLocations.includes(c.location)) document.getElementById("input-location").value = c.location; 
             document.getElementById("input-status").value = c.status || "Available"; 
             document.getElementById("input-borrower").value = c.borrower || "";
-            toggleBorrowerFieldVisibility();
+            document.getElementById("input-duedate").value = c.dueDate || "";
+            if (householdMembers.includes(c.reader)) document.getElementById("input-reader").value = c.reader;
+            
+            toggleStatusDependentFields();
 
             if (c.tags) { 
                 c.tags.split(", ").forEach(ts => { 
@@ -790,13 +1008,14 @@
             }); 
             document.getElementById("input-status").value = "Available"; 
             document.getElementById("input-borrower").value = ""; 
+            document.getElementById("input-duedate").value = "";
             currentScannedBook.dateBorrowed = "";
-            toggleBorrowerFieldVisibility();
+            toggleStatusDependentFields();
             resetTagChipsUI(); 
         }
 
         function resetTagChipsUI() { document.querySelectorAll(".tag-chip").forEach(ch => { ch.className = "tag-chip bg-gray-50 text-gray-600 border border-gray-200/80 px-3 py-1.5 text-xs font-medium rounded-xl cursor-pointer"; ch.innerText = `➕ ${ch.getAttribute("data-val")}`; }); }
-        function appendSessionHistoryLog(b) { historySection.classList.remove("hidden"); const c = b.uniqueId.split("-")[1] || "1"; const sl = b.status === "Checked Out" ? `<span class="text-red-600 font-semibold">Out</span>` : `<span class="text-emerald-600 font-semibold">Available</span>`; const li = document.createElement("div"); li.className = "bg-white border rounded-xl p-3 flex justify-between items-center text-xs shadow-xs"; li.innerHTML = `<div><p class="font-bold text-gray-800">${b.title}</p></div><div>${sl}</div>`; sessionLog.prepend(li); }
+        function appendSessionHistoryLog(b) { historySection.classList.remove("hidden"); const c = b.uniqueId.split("-")[1] || "1"; const sl = b.status === "Checked Out" ? `<span class="text-red-600 font-semibold">Out</span>` : (b.status === "Currently Reading" ? `<span class="text-indigo-600 font-semibold">Reading</span>` : `<span class="text-emerald-600 font-semibold">Available</span>`); const li = document.createElement("div"); li.className = "bg-white border rounded-xl p-3 flex justify-between items-center text-xs shadow-xs"; li.innerHTML = `<div><p class="font-bold text-gray-800">${b.title}</p></div><div>${sl}</div>`; sessionLog.prepend(li); }
     </script>
 </body>
 </html>
