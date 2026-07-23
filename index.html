@@ -748,17 +748,20 @@
                 return;
             }
         
-            activeCopiesData = [];
-            if (cachedBookData) {
+            // Check local catalog cache first regardless of scanning or clicking
+            if (globalCatalogCache && globalCatalogCache.length > 0) {
                 activeCopiesData = globalCatalogCache.filter(b => b.isbn === cleanIsbn);
             } else {
+                // Fall back to Apps Script endpoint if the cache hasn't loaded yet
                 try {
                     const lookupResponse = await fetch(`${GOOGLE_SCRIPT_URL}?isbn=${cleanIsbn}`); 
                     if (lookupResponse.ok) {
                         const lookupData = await lookupResponse.json(); 
-                        activeCopiesData = lookupData.copies || []; 
+                        activeCopiesData = lookupData.copies || lookupData.data || []; 
                     }
-                } catch(e) {}
+                } catch(e) {
+                    activeCopiesData = [];
+                }
             }
         
             try { 
