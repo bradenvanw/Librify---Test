@@ -280,7 +280,11 @@
 
     <script>
         const GOOGLE_SCRIPT_URL = "https://script.google.com/macros/s/AKfycbyMLokYCgCJyPz-DSW4-ql9e70l6sJ2HdZ5Ft_36yxfavgLwDRJvcFAzSd2d5tbrpQm/exec";
-        const GOOGLE_BOOKS_API_KEY = "AIzaSyCPrABNnNk9KWMu5kS4cRc2DMPk3DGoNQI";
+        // Must match the SHARED_SECRET value set in the Apps Script's Script Properties.
+        // NOTE: if this repo is public, this string is public too — it only stops casual/
+        // automated access, not anyone who reads the source. Make the repo private for
+        // this to actually protect the backend.
+        const SHARED_SECRET = "REPLACE_WITH_YOUR_OWN_LONG_RANDOM_STRING";
         const FALLBACK_COVER = 'https://images.unsplash.com/photo-1543002588-bfa74002ed7e?q=80&w=300';
         
         const viewScanMode = document.getElementById("view-scan-mode");
@@ -344,6 +348,7 @@
                     headers: { "Content-Type": "text/plain;charset=utf-8" },
                     body: JSON.stringify({
                         action: "saveSettings",
+                        token: SHARED_SECRET,
                         settings: settingsPayload
                     })
                 });
@@ -355,7 +360,7 @@
         async function loadSyncedSettingsFromServer() {
             try {
                 const cacheBuster = `&_cb=${new Date().getTime()}`;
-                const resp = await fetch(`${GOOGLE_SCRIPT_URL}?action=getSettings${cacheBuster}`);
+                const resp = await fetch(`${GOOGLE_SCRIPT_URL}?action=getSettings&token=${encodeURIComponent(SHARED_SECRET)}${cacheBuster}`);
                 if (!resp.ok) throw new Error(`HTTP Error Status: ${resp.status}`);
                 
                 const responseData = await resp.json();
@@ -532,7 +537,7 @@
             
             try {
                 const cacheBuster = `&_cb=${new Date().getTime()}`;
-                const resp = await fetch(`${GOOGLE_SCRIPT_URL}?action=getAll${cacheBuster}`);
+                const resp = await fetch(`${GOOGLE_SCRIPT_URL}?action=getAll&token=${encodeURIComponent(SHARED_SECRET)}${cacheBuster}`);
                 if (!resp.ok) throw new Error(`HTTP Error Status: ${resp.status}`);
                 const responseData = await resp.json();
                 
@@ -785,6 +790,7 @@
             
             const savedBookInstance = { 
                 action: "saveBook",
+                token: SHARED_SECRET,
                 ...currentScannedBook,
                 tags: currentScannedBook.tags,
                 coverImage: currentScannedBook.coverImage || currentScannedBook.thumbnail || ""
@@ -837,6 +843,7 @@
                     headers: { "Content-Type": "text/plain;charset=utf-8" },
                     body: JSON.stringify({
                         action: "deleteBook",
+                        token: SHARED_SECRET,
                         uniqueId: selectedUniqueId,
                         isbn: currentScannedBook.isbn
                     })
@@ -886,7 +893,7 @@
                 activeCopiesData = globalCatalogCache.filter(b => b.isbn === cleanIsbn);
             } else if (cleanIsbn) {
                 try {
-                    const lookupResponse = await fetch(`${GOOGLE_SCRIPT_URL}?isbn=${cleanIsbn}`); 
+                    const lookupResponse = await fetch(`${GOOGLE_SCRIPT_URL}?isbn=${cleanIsbn}&token=${encodeURIComponent(SHARED_SECRET)}`); 
                     if (lookupResponse.ok) {
                         const lookupData = await lookupResponse.json(); 
                         activeCopiesData = lookupData.copies || []; 
@@ -899,7 +906,7 @@
         
                 // 1. Try direct ISBN lookup first
                 if (cleanIsbn) {
-                    const googleUrl = `https://www.googleapis.com/books/v1/volumes?q=isbn:${cleanIsbn}&printType=books&key=${GOOGLE_BOOKS_API_KEY}`;
+                    const googleUrl = `${GOOGLE_SCRIPT_URL}?action=lookupIsbn&isbn=${cleanIsbn}&token=${encodeURIComponent(SHARED_SECRET)}`;
                     const response = await fetch(googleUrl);
                     searchResults = await response.json();
                 }
@@ -907,7 +914,7 @@
                 // 2. Fallback: If ISBN returned no items, try searching by title/author if query exists
                 if ((!searchResults || !searchResults.items || searchResults.items.length === 0) && rawInput && isNaN(rawInput)) {
                     showStatus("Searching Google Books by title/author...", "info");
-                    const fallbackUrl = `https://www.googleapis.com/books/v1/volumes?q=${encodeURIComponent(rawInput)}&printType=books&key=${GOOGLE_BOOKS_API_KEY}`;
+                    const fallbackUrl = `${GOOGLE_SCRIPT_URL}?action=searchBooks&q=${encodeURIComponent(rawInput)}&token=${encodeURIComponent(SHARED_SECRET)}`;
                     const fallbackResponse = await fetch(fallbackUrl);
                     searchResults = await fallbackResponse.json();
                 }
