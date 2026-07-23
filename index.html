@@ -4,6 +4,13 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Librify - Book Scanner & Collection Tracker</title>
+    
+    <!-- Mobile PWA Meta Tags -->
+    <meta name="mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <meta name="theme-color" content="#4f46e5">
+
     <!-- Tailwind CSS CDN -->
     <script src="https://cdn.jsdelivr.net/npm/@tailwindcss/browser@4"></script>
     <!-- html5-qrcode STABLE production library dependency -->
@@ -90,6 +97,15 @@
                 </div>
                 <div id="tag-library-list" class="flex flex-col gap-1.5 pt-1 max-h-32 overflow-y-auto pr-1"></div>
             </div>
+
+            <hr class="border-gray-100">
+
+            <!-- CSV Backup Utility -->
+            <div class="pt-1">
+                <button onclick="exportCatalogToCSV()" class="w-full bg-gray-100 hover:bg-gray-200 text-gray-700 font-semibold py-2 rounded-xl text-xs transition-colors flex items-center justify-center gap-2 cursor-pointer">
+                    📥 Export Catalog to CSV Backup
+                </button>
+            </div>
         </div>
 
         <!-- Dynamic Navigation Tabs -->
@@ -136,13 +152,27 @@
                     </button>
                 </div>
 
-                <!-- Sorting Controls -->
-                <div class="flex items-center justify-between text-xs pt-1">
-                    <span class="font-bold text-gray-500 uppercase tracking-wider">Sort By:</span>
-                    <select id="sort-order-select" onchange="filterLocalCatalogCache()" class="bg-gray-50 border border-gray-200 rounded-lg p-1.5 text-xs font-semibold focus:outline-none focus:ring-1 focus:ring-indigo-500">
-                        <option value="title-asc">Title (A – Z)</option>
-                        <option value="author-asc">Author (A – Z)</option>
-                    </select>
+                <!-- Sorting & Availability Filters -->
+                <div class="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-2 text-xs pt-1">
+                    <div class="flex items-center gap-1.5">
+                        <span class="font-bold text-gray-500 uppercase tracking-wider">Status:</span>
+                        <select id="status-filter-select" onchange="filterLocalCatalogCache()" class="bg-gray-50 border border-gray-200 rounded-lg p-1.5 text-xs font-semibold focus:outline-none focus:ring-1 focus:ring-indigo-500">
+                            <option value="all">All Items</option>
+                            <option value="Available">🟢 Available</option>
+                            <option value="Checked Out">🔴 Checked Out</option>
+                            <option value="Currently Reading">📖 Reading</option>
+                        </select>
+                    </div>
+
+                    <div class="flex items-center gap-1.5">
+                        <span class="font-bold text-gray-500 uppercase tracking-wider">Sort:</span>
+                        <select id="sort-order-select" onchange="filterLocalCatalogCache()" class="bg-gray-50 border border-gray-200 rounded-lg p-1.5 text-xs font-semibold focus:outline-none focus:ring-1 focus:ring-indigo-500">
+                            <option value="title-asc">Title (A – Z)</option>
+                            <option value="author-asc">Author (A – Z)</option>
+                            <option value="year-desc">Published (Newest)</option>
+                            <option value="year-asc">Published (Oldest)</option>
+                        </select>
+                    </div>
                 </div>
                 
                 <div class="space-y-1.5">
@@ -194,6 +224,12 @@
                     </div>
                 </div>
 
+                <div class="text-right">
+                    <button onclick="openManualBookModal()" class="text-xs font-semibold text-indigo-600 hover:underline cursor-pointer">
+                        + Add Book Manually (Without Barcode)
+                    </button>
+                </div>
+
                 <div id="scanner-section" class="max-h-0 opacity-0 overflow-hidden border-gray-200 rounded-2xl bg-gray-50 transition-all duration-300 ease-in-out">
                     <div class="p-3">
                         <div id="interactive-reader" class="w-full mx-auto"></div>
@@ -212,6 +248,34 @@
             </div>
         </div>
 
+    </div>
+
+    <!-- Manual Entry Modal -->
+    <div id="manual-entry-modal" class="hidden fixed inset-0 bg-slate-900/60 backdrop-blur-xs flex items-center justify-center p-4 z-50">
+        <div class="bg-white rounded-2xl max-w-md w-full p-6 space-y-4 shadow-xl">
+            <div class="flex justify-between items-center border-b pb-2">
+                <h3 class="text-sm font-bold text-gray-800 uppercase">📝 Add Book Manually</h3>
+                <button onclick="closeManualBookModal()" class="text-gray-400 hover:text-gray-600 font-bold text-lg cursor-pointer">&times;</button>
+            </div>
+            <div class="space-y-3 text-xs">
+                <div>
+                    <label class="block font-bold text-gray-600 mb-1">Title *</label>
+                    <input type="text" id="manual-title" class="w-full bg-gray-50 border rounded-lg p-2.5 focus:outline-none focus:ring-1 focus:ring-indigo-500">
+                </div>
+                <div>
+                    <label class="block font-bold text-gray-600 mb-1">Author(s)</label>
+                    <input type="text" id="manual-author" placeholder="e.g. Isaac Asimov" class="w-full bg-gray-50 border rounded-lg p-2.5">
+                </div>
+                <div>
+                    <label class="block font-bold text-gray-600 mb-1">Custom Identifier / ISBN</label>
+                    <input type="text" id="manual-isbn" placeholder="e.g. 9780000000000" class="w-full bg-gray-50 border rounded-lg p-2.5">
+                </div>
+            </div>
+            <div class="flex justify-end gap-2 pt-2">
+                <button onclick="closeManualBookModal()" class="px-4 py-2 bg-gray-100 text-gray-600 rounded-lg text-xs font-semibold">Cancel</button>
+                <button onclick="saveManualBookEntry()" class="px-4 py-2 bg-indigo-600 text-white rounded-lg text-xs font-semibold">Load Profile</button>
+            </div>
+        </div>
     </div>
 
     <script>
@@ -256,15 +320,11 @@
         let globalCatalogCache = []; 
         let activeSelectedCategoryFilter = ""; 
         
-        // Base structures (Loaded from localStorage as initial fallback)
         let userTags = JSON.parse(localStorage.getItem("librify_tags")) || ["To Read", "Favorite", "Hardcover", "Borrowed"];
         let userLocations = JSON.parse(localStorage.getItem("librify_locations")) || ["Living Room Main", "Office Bookshelf", "Bedroom Table", "Unassigned / Pile"];
         let householdMembers = JSON.parse(localStorage.getItem("librify_members")) || ["Self", "Partner", "Child"];
-
-        // Filter preference states
         let visibleDashboardFilters = JSON.parse(localStorage.getItem("librify_visible_filters")) || [...userLocations, ...userTags];
 
-        // --- UNIVERSAL SETTINGS SYNC (Google Apps Script Backend) ---
         async function syncSettingsToServer() {
             const settingsPayload = {
                 userTags: userTags,
@@ -273,13 +333,11 @@
                 visibleDashboardFilters: visibleDashboardFilters
             };
             
-            // Save locally immediately
             localStorage.setItem("librify_tags", JSON.stringify(userTags));
             localStorage.setItem("librify_locations", JSON.stringify(userLocations));
             localStorage.setItem("librify_members", JSON.stringify(householdMembers));
             localStorage.setItem("librify_visible_filters", JSON.stringify(visibleDashboardFilters));
         
-            // Send payload explicitly formatted for the backend routing
             try {
                 await fetch(GOOGLE_SCRIPT_URL, {
                     method: "POST",
@@ -289,7 +347,6 @@
                         settings: settingsPayload
                     })
                 });
-                console.log("Settings successfully synced to Settings sheet.");
             } catch (e) {
                 console.error("Error syncing settings to backend:", e);
             }
@@ -310,13 +367,11 @@
                     if (settings.householdMembers) householdMembers = settings.householdMembers;
                     if (settings.visibleDashboardFilters) visibleDashboardFilters = settings.visibleDashboardFilters;
 
-                    // Update localStorage with synced settings from Google Sheet
                     localStorage.setItem("librify_tags", JSON.stringify(userTags));
                     localStorage.setItem("librify_locations", JSON.stringify(userLocations));
                     localStorage.setItem("librify_members", JSON.stringify(householdMembers));
                     localStorage.setItem("librify_visible_filters", JSON.stringify(visibleDashboardFilters));
 
-                    // Re-render UI components to display synced settings
                     renderTagLibrarySettings();
                     renderLocationLibrarySettings();
                     renderMemberLibrarySettings();
@@ -327,13 +382,11 @@
             }
         }
         
-        // Initialize UI components and trigger remote settings sync
         renderTagLibrarySettings();
         renderLocationLibrarySettings();
         renderMemberLibrarySettings();
         renderQuickFilterPillsModule();
         loadSyncedSettingsFromServer();
-        
         fetchAllBooksFromGoogleSheet();
 
         function switchAppMode(mode) {
@@ -431,6 +484,16 @@
             return dueDate < today;
         }
 
+        function checkItemDueSoonStatus(dueDateString) {
+            if (!dueDateString) return false;
+            const dueDate = new Date(dueDateString);
+            if (isNaN(dueDate.getTime())) return false;
+            const today = new Date();
+            today.setHours(0, 0, 0, 0);
+            const diffDays = Math.ceil((dueDate - today) / (1000 * 60 * 60 * 24));
+            return diffDays >= 0 && diffDays <= 3;
+        }
+
         function runDatabaseAnalyticsEngine() {
             if (!globalCatalogCache || globalCatalogCache.length === 0) {
                 updateAnalyticsDashboardUI(0, 0, 0, 0);
@@ -502,10 +565,14 @@
         function filterLocalCatalogCache() {
             const query = searchQueryInput.value.toLowerCase().trim();
             const categoryFilter = activeSelectedCategoryFilter.toLowerCase();
+            const statusFilter = document.getElementById("status-filter-select").value;
             const sortOrder = document.getElementById("sort-order-select").value;
             searchResultsList.innerHTML = "";
         
             let filtered = globalCatalogCache.filter(b => {
+                if (statusFilter !== "all" && (b.status || "Available") !== statusFilter) {
+                    return false;
+                }
                 if (categoryFilter !== "") {
                     const matchLoc = b.location && b.location.toLowerCase() === categoryFilter;
                     const matchTag = b.tags && b.tags.toLowerCase().split(", ").includes(categoryFilter);
@@ -524,17 +591,21 @@
 
             filtered.sort((a, b) => {
                 if (sortOrder === "author-asc") {
-                    const authorA = (a.authors || "").toLowerCase();
-                    const authorB = (b.authors || "").toLowerCase();
-                    return authorA.localeCompare(authorB);
+                    return (a.authors || "").toLowerCase().localeCompare((b.authors || "").toLowerCase());
+                } else if (sortOrder === "year-desc") {
+                    const yA = parseInt((a.publishedDate || "").toString().match(/\d{4}/) || [0]);
+                    const yB = parseInt((b.publishedDate || "").toString().match(/\d{4}/) || [0]);
+                    return yB - yA;
+                } else if (sortOrder === "year-asc") {
+                    const yA = parseInt((a.publishedDate || "").toString().match(/\d{4}/) || [0]);
+                    const yB = parseInt((b.publishedDate || "").toString().match(/\d{4}/) || [0]);
+                    return yA - yB;
                 } else {
-                    const titleA = (a.title || "").toLowerCase();
-                    const titleB = (b.title || "").toLowerCase();
-                    return titleA.localeCompare(titleB);
+                    return (a.title || "").toLowerCase().localeCompare((b.title || "").toLowerCase());
                 }
             });
         
-            if (categoryFilter === "" && query === "") {
+            if (categoryFilter === "" && query === "" && statusFilter === "all") {
                 searchResultsMatchCounter.innerText = "Quick Filters";
             } else {
                 searchResultsMatchCounter.innerText = `Found Filters (${filtered.length} matches)`;
@@ -549,6 +620,8 @@
                 const isCheckedOut = book.status === "Checked Out";
                 const isCurrentlyReading = book.status === "Currently Reading";
                 const isOverdue = isCheckedOut && checkItemOverdueStatus(book.dueDate);
+                const isDueSoon = isCheckedOut && !isOverdue && checkItemDueSoonStatus(book.dueDate);
+
                 let displayYear = "N/A";
                 if (book.publishedDate) {
                     const match = book.publishedDate.toString().match(/\d{4}/);
@@ -564,13 +637,14 @@
                 const card = document.createElement("div");
                 card.className = "bg-white p-4 rounded-xl border border-gray-100 shadow-2xs flex gap-3 items-start text-left cursor-pointer hover:border-indigo-200 transition-colors relative overflow-hidden";
                 if (isOverdue) card.classList.add("border-l-4", "border-l-red-500");
+                else if (isDueSoon) card.classList.add("border-l-4", "border-l-amber-500");
 
                 card.onclick = () => {
                     isbnInput.value = book.isbn;
                     checkExistingAndFetchMetadata(book.isbn, book);
                 };
         
-                const overdueBadge = isOverdue ? `<span class="bg-red-600 text-white text-[8px] font-black uppercase px-1 rounded tracking-wider animate-pulse">Overdue</span>` : '';
+                const overdueBadge = isOverdue ? `<span class="bg-red-600 text-white text-[8px] font-black uppercase px-1 rounded tracking-wider animate-pulse">Overdue</span>` : (isDueSoon ? `<span class="bg-amber-500 text-white text-[8px] font-black uppercase px-1 rounded tracking-wider">Due Soon</span>` : '');
                 let statusBadgeHTML = '<span class="text-[9px] font-bold text-emerald-600 bg-green-50 px-1.5 py-0.5 rounded flex-shrink-0">Available</span>';
                 
                 if (isCheckedOut) {
@@ -579,7 +653,6 @@
                     statusBadgeHTML = `<div class="text-[10px] text-indigo-700 bg-indigo-50/70 px-2 py-1 rounded-md font-medium border border-indigo-100 mt-1 flex justify-between items-center gap-1 w-full"><span class="truncate">📖 Reading: <b>${book.reader || 'Unknown'}</b></span><span class="font-bold uppercase tracking-wide text-[8px] px-1 bg-indigo-200 rounded text-indigo-800">Reading</span></div>`;
                 }
 
-                // --- Tag Badges Generator ---
                 let tagsBadgesHTML = '';
                 if (book.tags && book.tags.trim() !== '') {
                     const tagList = book.tags.split(',').map(t => t.trim()).filter(Boolean);
@@ -651,13 +724,15 @@
             } else {
                 checkedOutBooks.forEach(book => {
                     const isOverdue = checkItemOverdueStatus(book.dueDate);
+                    const isDueSoon = !isOverdue && checkItemDueSoonStatus(book.dueDate);
+                    
                     const item = document.createElement("div");
-                    item.className = `flex items-center justify-between p-3 rounded-xl border text-xs ${isOverdue ? 'bg-red-50/60 border-red-200' : 'bg-gray-50 border-gray-200'}`;
+                    item.className = `flex items-center justify-between p-3 rounded-xl border text-xs ${isOverdue ? 'bg-red-50/60 border-red-200' : (isDueSoon ? 'bg-amber-50/60 border-amber-200' : 'bg-gray-50 border-gray-200')}`;
                     item.innerHTML = `
                         <div>
                             <p class="font-bold text-gray-900">${book.title}</p>
                             <p class="text-gray-600">Borrower: <b>${book.borrower || 'Unknown'}</b> ${book.dueDate ? `| Due: <b>${book.dueDate}</b>` : ''}</p>
-                            ${isOverdue ? '<span class="inline-block mt-1 bg-red-600 text-white text-[9px] font-black uppercase px-1.5 py-0.5 rounded">Overdue</span>' : ''}
+                            ${isOverdue ? '<span class="inline-block mt-1 bg-red-600 text-white text-[9px] font-black uppercase px-1.5 py-0.5 rounded">Overdue</span>' : (isDueSoon ? '<span class="inline-block mt-1 bg-amber-500 text-white text-[9px] font-black uppercase px-1.5 py-0.5 rounded">Due Soon</span>' : '')}
                         </div>
                         <button onclick="isbnInput.value='${book.isbn}'; checkExistingAndFetchMetadata('${book.isbn}', null);" class="text-[10px] bg-white border border-gray-300 px-2.5 py-1 rounded-lg font-bold text-gray-700 cursor-pointer hover:bg-gray-100">Manage</button>
                     `;
@@ -670,6 +745,13 @@
             if (!currentScannedBook || !currentScannedBook.title) {
                 console.warn("No valid book loaded to save.");
                 return;
+            }
+
+            const submitBtn = document.getElementById("submit-to-sheet-btn");
+            if (submitBtn) {
+                submitBtn.disabled = true;
+                submitBtn.classList.add("opacity-50", "cursor-not-allowed");
+                submitBtn.innerText = "⏳ Saving & Syncing...";
             }
         
             const statusValue = document.getElementById("input-status").value;
@@ -697,8 +779,6 @@
                 currentScannedBook.dateBorrowed = ""; 
             }
             
-            // --- TAG SELECTION FIX ---
-            // Grab all active tag chips regardless of exact color classes
             const activeTagButtons = document.querySelectorAll("#tag-chips-container button.bg-indigo-600"); 
             const selectedTagsArray = Array.from(activeTagButtons).map(c => c.getAttribute("data-val")).filter(Boolean);
             currentScannedBook.tags = selectedTagsArray.join(", "); 
@@ -706,7 +786,7 @@
             const savedBookInstance = { 
                 action: "saveBook",
                 ...currentScannedBook,
-                tags: currentScannedBook.tags, // Explicitly pass tags string
+                tags: currentScannedBook.tags,
                 coverImage: currentScannedBook.coverImage || currentScannedBook.thumbnail || ""
             }; 
         
@@ -742,64 +822,58 @@
             bookResult.innerHTML = `<div class="flex items-center justify-center py-12"><div class="animate-spin rounded-full h-8 w-8 border-b-2 border-indigo-600"></div></div>`; 
             
             const cleanIsbn = isbn.toString().trim().replace(/[^0-9X]/gi, ""); 
-            if (!cleanIsbn || (cleanIsbn.length !== 10 && cleanIsbn.length !== 13)) {
-                showStatus("Invalid ISBN structure.", "error");
-                bookResult.innerHTML = "";
-                return;
-            }
-        
-            // Check local catalog cache first regardless of scanning or clicking
-            if (globalCatalogCache && globalCatalogCache.length > 0) {
+            
+            activeCopiesData = [];
+            if (cachedBookData) {
                 activeCopiesData = globalCatalogCache.filter(b => b.isbn === cleanIsbn);
-            } else {
-                // Fall back to Apps Script endpoint if the cache hasn't loaded yet
+            } else if (cleanIsbn) {
                 try {
                     const lookupResponse = await fetch(`${GOOGLE_SCRIPT_URL}?isbn=${cleanIsbn}`); 
                     if (lookupResponse.ok) {
                         const lookupData = await lookupResponse.json(); 
-                        activeCopiesData = lookupData.copies || lookupData.data || []; 
+                        activeCopiesData = lookupData.copies || []; 
                     }
-                } catch(e) {
-                    activeCopiesData = [];
-                }
+                } catch(e) {}
             }
         
             try { 
-                const googleUrl = `https://www.googleapis.com/books/v1/volumes?q=isbn:${cleanIsbn}&printType=books&key=${GOOGLE_BOOKS_API_KEY}`;
-                const response = await fetch(googleUrl);
-                const searchResults = await response.json();
-                
-                if (searchResults.items && searchResults.items.length > 0) { 
-                    const vol = searchResults.items[0].volumeInfo; 
+                if (cleanIsbn) {
+                    const googleUrl = `https://www.googleapis.com/books/v1/volumes?q=isbn:${cleanIsbn}&printType=books&key=${GOOGLE_BOOKS_API_KEY}`;
+                    const response = await fetch(googleUrl);
+                    const searchResults = await response.json();
                     
-                    const fetchedCover = vol.imageLinks && vol.imageLinks.thumbnail 
-                        ? vol.imageLinks.thumbnail.replace("http://", "https://") 
-                        : FALLBACK_COVER;
+                    if (searchResults.items && searchResults.items.length > 0) { 
+                        const vol = searchResults.items[0].volumeInfo; 
+                        
+                        const fetchedCover = vol.imageLinks && vol.imageLinks.thumbnail 
+                            ? vol.imageLinks.thumbnail.replace("http://", "https://") 
+                            : FALLBACK_COVER;
 
-                    currentScannedBook = { 
-                        isbn: cleanIsbn, 
-                        title: vol.title || "Unknown Title", 
-                        subtitle: vol.subtitle || "",
-                        authors: vol.authors ? vol.authors.join(", ") : "Unknown Author", 
-                        publisher: vol.publisher || "N/A", 
-                        publishedDate: vol.publishedDate || "N/A", 
-                        coverImage: fetchedCover,
-                        thumbnail: fetchedCover,
-                        categories: vol.categories ? vol.categories.join(", ") : "General",
-                        genre: vol.categories ? vol.categories[0] : "General Reading", 
-                        pageCount: vol.pageCount || "N/A",
-                        description: vol.description || "No description available.", 
-                        language: vol.language ? vol.language.toUpperCase() : "N/A", 
-                        dimensions: "N/A", 
-                        dateBorrowed: "", 
-                        dueDate: "", 
-                        reader: ""
-                    }; 
-                    showStatus("Book profile matched!", "success"); 
-                    renderIntegratedLayout(); 
-                    return;
-                } 
-                
+                        currentScannedBook = { 
+                            isbn: cleanIsbn, 
+                            title: vol.title || "Unknown Title", 
+                            subtitle: vol.subtitle || "",
+                            authors: vol.authors ? vol.authors.join(", ") : "Unknown Author", 
+                            publisher: vol.publisher || "N/A", 
+                            publishedDate: vol.publishedDate || "N/A", 
+                            coverImage: fetchedCover,
+                            thumbnail: fetchedCover,
+                            categories: vol.categories ? vol.categories.join(", ") : "General",
+                            genre: vol.categories ? vol.categories[0] : "General Reading", 
+                            pageCount: vol.pageCount || "N/A",
+                            description: vol.description || "No description available.", 
+                            language: vol.language ? vol.language.toUpperCase() : "N/A", 
+                            dimensions: "N/A", 
+                            dateBorrowed: "", 
+                            dueDate: "", 
+                            reader: ""
+                        }; 
+                        showStatus("Book profile matched!", "success"); 
+                        renderIntegratedLayout(); 
+                        return;
+                    } 
+                }
+
                 if (cachedBookData) {
                     currentScannedBook = { ...cachedBookData };
                     if (!currentScannedBook.coverImage && currentScannedBook.thumbnail) {
@@ -809,7 +883,7 @@
                     renderIntegratedLayout();
                     return;
                 }
-                showStatus(`No data found for ISBN: ${cleanIsbn}`, "error"); 
+                showStatus(`No online record found. Consider entering manually.`, "error"); 
                 bookResult.innerHTML = ""; 
             } catch (err) { 
                 bookResult.innerHTML = ""; 
@@ -817,13 +891,85 @@
         } 
         
         isbnInput.addEventListener("keyup", function(e) { if (e.key === "Enter") { const q = isbnInput.value.trim().replace(/[-\s]/g, ""); if (q) checkExistingAndFetchMetadata(q); } });
+
+        function openManualBookModal() {
+            document.getElementById("manual-entry-modal").classList.remove("hidden");
+        }
+
+        function closeManualBookModal() {
+            document.getElementById("manual-entry-modal").classList.add("hidden");
+        }
+
+        function saveManualBookEntry() {
+            const title = document.getElementById("manual-title").value.trim();
+            const author = document.getElementById("manual-author").value.trim() || "Unknown Author";
+            let isbn = document.getElementById("manual-isbn").value.trim() || `MANUAL-${Date.now()}`;
+
+            if (!title) {
+                alert("Please provide a title.");
+                return;
+            }
+
+            currentScannedBook = {
+                isbn: isbn,
+                title: title,
+                subtitle: "",
+                authors: author,
+                publisher: "N/A",
+                publishedDate: new Date().getFullYear().toString(),
+                coverImage: FALLBACK_COVER,
+                thumbnail: FALLBACK_COVER,
+                categories: "General",
+                genre: "General Reading",
+                pageCount: "N/A",
+                description: "Manually entered title.",
+                language: "EN",
+                dimensions: "N/A",
+                dateBorrowed: "",
+                dueDate: "",
+                reader: ""
+            };
+
+            closeManualBookModal();
+            showStatus("Loaded manually entered book.", "success");
+            renderIntegratedLayout();
+        }
+
+        function exportCatalogToCSV() {
+            if (!globalCatalogCache || globalCatalogCache.length === 0) {
+                alert("No books in catalog to export!");
+                return;
+            }
+
+            const headers = ["Unique ID", "ISBN", "Title", "Authors", "Status", "Location", "Tags", "Borrower", "Due Date", "Reader"];
+            const rows = globalCatalogCache.map(b => [
+                `"${b.uniqueId || ''}"`,
+                `"${b.isbn || ''}"`,
+                `"${(b.title || '').replace(/"/g, '""')}"`,
+                `"${(b.authors || '').replace(/"/g, '""')}"`,
+                `"${b.status || 'Available'}"`,
+                `"${b.location || ''}"`,
+                `"${b.tags || ''}"`,
+                `"${b.borrower || ''}"`,
+                `"${b.dueDate || ''}"`,
+                `"${b.reader || ''}"`
+            ]);
+
+            const csvContent = "data:text/csv;charset=utf-8," + [headers.join(","), ...rows.map(e => e.join(","))].join("\n");
+            const encodedUri = encodeURI(csvContent);
+            const link = document.createElement("a");
+            link.setAttribute("href", encodedUri);
+            link.setAttribute("download", `librify_catalog_backup_${new Date().toISOString().slice(0,10)}.csv`);
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
+        }
         
         function toggleAppSettingsPanel(id) { 
             const el = document.getElementById(id); 
             if (el) el.classList.toggle("hidden"); 
         }
         
-        // Household Members Manager
         function renderMemberLibrarySettings() {
             memberLibraryList.innerHTML = "";
             householdMembers.forEach((m, i) => {
@@ -877,7 +1023,6 @@
             }
         }
 
-        // Location List Manager
         function renderLocationLibrarySettings() { 
             locationLibraryList.innerHTML = ""; 
             userLocations.forEach((l, i) => { 
@@ -931,7 +1076,6 @@
             if (userLocations.includes(p)) d.value = p; 
         }
         
-        // Tag List Manager
         function renderTagLibrarySettings() { 
             tagLibraryList.innerHTML = ""; 
             userTags.forEach((t, i) => { 
@@ -990,8 +1134,14 @@
             const coverUrl = currentScannedBook.coverImage || currentScannedBook.thumbnail || FALLBACK_COVER;
             const subtitleHTML = currentScannedBook.subtitle ? `<p class="text-xs text-gray-500 italic -mt-1 leading-tight">${currentScannedBook.subtitle}</p>` : '';
             const descriptionHTML = currentScannedBook.description ? `<div class="bg-white rounded-2xl shadow-sm border border-gray-100 p-4 text-xs text-gray-600 leading-relaxed text-left"><span class="font-bold text-gray-400 block text-[9px] uppercase tracking-wider mb-1">Synopsis</span>${currentScannedBook.description}</div>` : '';
+            
             const isCopyOverdue = currentScannedBook.status === "Checked Out" && checkItemOverdueStatus(currentScannedBook.dueDate);
-            const overdueBannerHTML = isCopyOverdue ? `<div class="bg-red-50 border border-red-200 text-red-800 p-3 rounded-xl text-xs font-bold text-center animate-pulse">⚠️ ATTENTION: Marked OVERDUE!</div>` : '';
+            const isCopyDueSoon = currentScannedBook.status === "Checked Out" && !isCopyOverdue && checkItemDueSoonStatus(currentScannedBook.dueDate);
+
+            const overdueBannerHTML = isCopyOverdue 
+                ? `<div class="bg-red-50 border border-red-200 text-red-800 p-3 rounded-xl text-xs font-bold text-center animate-pulse">⚠️ ATTENTION: Marked OVERDUE!</div>` 
+                : (isCopyDueSoon ? `<div class="bg-amber-50 border border-amber-200 text-amber-800 p-3 rounded-xl text-xs font-bold text-center">⏳ NOTICE: Due in less than 3 days!</div>` : '');
+
             const borrowedDateHTML = (currentScannedBook.status === "Checked Out" && currentScannedBook.dateBorrowed) ? `<div class="bg-amber-50 border border-amber-200 rounded-xl p-3 text-xs text-amber-800 flex justify-between items-center"><span class="font-medium">Tracking Borrow Date Out</span><span class="font-mono font-bold">${currentScannedBook.dateBorrowed}</span></div>` : '';
         
             bookResult.innerHTML = `
@@ -1046,7 +1196,9 @@
                     
                     <div class="space-y-1"><label class="block text-xs font-bold text-gray-600 uppercase tracking-wider">Storage Shelf Location Slot</label><select id="input-location" class="w-full bg-gray-50 border rounded-lg p-2.5 text-xs font-medium"></select></div>
                     <div class="space-y-1"><label class="block text-xs font-bold text-gray-600 uppercase tracking-wider">Collection Tracking Badges</label><div id="tag-chips-container" class="flex flex-wrap gap-2 pt-1"></div></div>
-                    <button id="submit-to-sheet-btn" onclick="submitDataToGoogleSheets()" class="w-full bg-indigo-600 hover:bg-indigo-700 text-white font-semibold py-3 rounded-xl text-sm shadow-sm cursor-pointer mt-2 transition-all">Confirm & Sync Data Records</button>
+                    <button id="submit-to-sheet-btn" onclick="submitDataToGoogleSheets()" class="w-full bg-indigo-600 hover:bg-indigo-700 text-white font-semibold py-3 rounded-xl text-sm shadow-sm cursor-pointer mt-2 transition-all flex justify-center items-center gap-2">
+                        <span>Confirm & Sync Data Records</span>
+                    </button>
                 </div>
             `; 
             setupFormInteractions(); 
@@ -1126,7 +1278,6 @@
             document.getElementById("input-borrower").value = c.borrower || "";
             document.getElementById("input-duedate").value = c.dueDate || "";
             
-            // Auto-select existing tags on UI chips
             if (c.tags) {
                 const existingTags = c.tags.split(",").map(t => t.trim());
                 document.querySelectorAll("#tag-chips-container button").forEach(btn => {
