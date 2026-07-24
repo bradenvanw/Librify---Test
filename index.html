@@ -56,55 +56,60 @@
         </header>
 
         <!-- ================= GLOBAL SETTINGS MENU HUB ================= -->
-        <div id="global-settings-hub" class="hidden bg-white rounded-2xl shadow-sm border border-gray-200 p-5 mb-6 space-y-4 transition-all">
-            <div class="flex justify-between items-center border-b border-gray-100 pb-2">
-                <h2 class="text-sm font-bold text-gray-700 uppercase tracking-wider">⚙️ System Control Settings</h2>
-                <button onclick="toggleAppSettingsPanel('global-settings-hub')" class="text-gray-400 hover:text-gray-600 font-bold text-lg cursor-pointer">&times;</button>
-            </div>
-            
-            <p class="text-[11px] text-gray-400 italic">Toggle the checkboxes next to any parameter to pinpoint exactly which filters appear on your main search dashboard.</p>
-            
-            <!-- Household Members Manager Component -->
-            <div class="space-y-2">
-                <h3 class="text-xs font-bold text-gray-500 uppercase tracking-wider">👥 Household Members</h3>
-                <div class="flex gap-2">
-                    <input type="text" id="new-member-input" placeholder="e.g., Alex..." class="flex-grow bg-gray-50 border border-gray-200 rounded-lg p-2 text-xs focus:outline-none focus:ring-1 focus:ring-indigo-500">
-                    <button onclick="addNewHouseholdMember()" class="bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-bold px-4 py-2 rounded-lg cursor-pointer">Add</button>
+        <div id="global-settings-hub" class="hidden fixed inset-0 bg-slate-900/60 backdrop-blur-xs flex items-start sm:items-center justify-center p-4 z-50 overflow-y-auto">
+            <div class="bg-white rounded-2xl shadow-xl max-w-md w-full my-8 flex flex-col max-h-[85vh]">
+                <div class="flex justify-between items-center border-b border-gray-100 p-4 shrink-0">
+                    <h2 class="text-sm font-bold text-gray-700 uppercase tracking-wider">⚙️ Settings</h2>
+                    <button onclick="toggleAppSettingsPanel('global-settings-hub')" class="text-gray-400 hover:text-gray-600 font-bold text-lg cursor-pointer">&times;</button>
                 </div>
-                <div id="member-library-list" class="flex flex-col gap-1.5 pt-1 max-h-32 overflow-y-auto pr-1"></div>
-            </div>
 
-            <hr class="border-gray-100">
-
-            <!-- Location Sub-Manager Component -->
-            <div class="space-y-2">
-                <h3 class="text-xs font-bold text-gray-500 uppercase tracking-wider">📍 Custom Storage Locations</h3>
-                <div class="flex gap-2">
-                    <input type="text" id="new-location-input" placeholder="e.g., Office Bookshelf..." class="flex-grow bg-gray-50 border border-gray-200 rounded-lg p-2 text-xs focus:outline-none focus:ring-1 focus:ring-indigo-500">
-                    <button onclick="addNewCustomUserLocation()" class="bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-bold px-4 py-2 rounded-lg cursor-pointer">Add</button>
+                <!-- Sub Tabs -->
+                <div class="flex gap-1 px-4 pt-3 pb-3 border-b border-gray-100 shrink-0">
+                    <button id="settings-subtab-members" onclick="switchSettingsSubTab('members')" class="flex-1 text-center py-1.5 text-[11px] font-bold rounded-lg cursor-pointer transition-all">👥 Members</button>
+                    <button id="settings-subtab-locations" onclick="switchSettingsSubTab('locations')" class="flex-1 text-center py-1.5 text-[11px] font-bold rounded-lg cursor-pointer transition-all">📍 Locations</button>
+                    <button id="settings-subtab-tags" onclick="switchSettingsSubTab('tags')" class="flex-1 text-center py-1.5 text-[11px] font-bold rounded-lg cursor-pointer transition-all">🏷️ Tags</button>
+                    <button id="settings-subtab-data" onclick="switchSettingsSubTab('data')" class="flex-1 text-center py-1.5 text-[11px] font-bold rounded-lg cursor-pointer transition-all">💾 Data</button>
                 </div>
-                <div id="location-library-list" class="flex flex-col gap-1.5 pt-1 max-h-32 overflow-y-auto pr-1"></div>
-            </div>
 
-            <hr class="border-gray-100">
+                <div class="p-4 overflow-y-auto space-y-3">
+                    <!-- Household Members Panel -->
+                    <div id="settings-panel-members" class="space-y-2">
+                        <p class="text-[11px] text-gray-400 italic">Household members can be assigned as readers for books marked "Currently Reading."</p>
+                        <div class="flex gap-2">
+                            <input type="text" id="new-member-input" placeholder="e.g., Alex..." class="flex-grow bg-gray-50 border border-gray-200 rounded-lg p-2 text-xs focus:outline-none focus:ring-1 focus:ring-indigo-500">
+                            <button onclick="addNewHouseholdMember()" class="bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-bold px-4 py-2 rounded-lg cursor-pointer">Add</button>
+                        </div>
+                        <div id="member-library-list" class="flex flex-col gap-1.5 pt-1"></div>
+                    </div>
 
-            <!-- Tags Sub-Manager Component -->
-            <div class="space-y-2">
-                <h3 class="text-xs font-bold text-gray-500 uppercase tracking-wider">🏷️ Custom Collection Tags</h3>
-                <div class="flex gap-2">
-                    <input type="text" id="new-tag-input" placeholder="e.g., Sci-Fi Masterpieces..." class="flex-grow bg-gray-50 border border-gray-200 rounded-lg p-2 text-xs focus:outline-none focus:ring-1 focus:ring-indigo-500">
-                    <button onclick="addNewCustomUserTag()" class="bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-bold px-4 py-2 rounded-lg cursor-pointer">Add</button>
+                    <!-- Location Sub-Manager Panel -->
+                    <div id="settings-panel-locations" class="space-y-2 hidden">
+                        <p class="text-[11px] text-gray-400 italic">Toggle the checkbox to pin a location as a quick filter on your Search dashboard.</p>
+                        <div class="flex gap-2">
+                            <input type="text" id="new-location-input" placeholder="e.g., Office Bookshelf..." class="flex-grow bg-gray-50 border border-gray-200 rounded-lg p-2 text-xs focus:outline-none focus:ring-1 focus:ring-indigo-500">
+                            <button onclick="addNewCustomUserLocation()" class="bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-bold px-4 py-2 rounded-lg cursor-pointer">Add</button>
+                        </div>
+                        <div id="location-library-list" class="flex flex-col gap-1.5 pt-1"></div>
+                    </div>
+
+                    <!-- Tags Sub-Manager Panel -->
+                    <div id="settings-panel-tags" class="space-y-2 hidden">
+                        <p class="text-[11px] text-gray-400 italic">Toggle the checkbox to pin a tag as a quick filter on your Search dashboard.</p>
+                        <div class="flex gap-2">
+                            <input type="text" id="new-tag-input" placeholder="e.g., Sci-Fi Masterpieces..." class="flex-grow bg-gray-50 border border-gray-200 rounded-lg p-2 text-xs focus:outline-none focus:ring-1 focus:ring-indigo-500">
+                            <button onclick="addNewCustomUserTag()" class="bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-bold px-4 py-2 rounded-lg cursor-pointer">Add</button>
+                        </div>
+                        <div id="tag-library-list" class="flex flex-col gap-1.5 pt-1"></div>
+                    </div>
+
+                    <!-- Data / CSV Backup Panel -->
+                    <div id="settings-panel-data" class="space-y-2 hidden">
+                        <p class="text-[11px] text-gray-400 italic">Export a backup of your full catalog as a CSV file.</p>
+                        <button onclick="exportCatalogToCSV()" class="w-full bg-gray-100 hover:bg-gray-200 text-gray-700 font-semibold py-2 rounded-xl text-xs transition-colors flex items-center justify-center gap-2 cursor-pointer">
+                            📥 Export Catalog to CSV Backup
+                        </button>
+                    </div>
                 </div>
-                <div id="tag-library-list" class="flex flex-col gap-1.5 pt-1 max-h-32 overflow-y-auto pr-1"></div>
-            </div>
-
-            <hr class="border-gray-100">
-
-            <!-- CSV Backup Utility -->
-            <div class="pt-1">
-                <button onclick="exportCatalogToCSV()" class="w-full bg-gray-100 hover:bg-gray-200 text-gray-700 font-semibold py-2 rounded-xl text-xs transition-colors flex items-center justify-center gap-2 cursor-pointer">
-                    📥 Export Catalog to CSV Backup
-                </button>
             </div>
         </div>
 
@@ -1282,7 +1287,20 @@
         
         function toggleAppSettingsPanel(id) { 
             const el = document.getElementById(id); 
-            if (el) el.classList.toggle("hidden"); 
+            if (!el) return;
+            el.classList.toggle("hidden");
+            if (!el.classList.contains("hidden")) switchSettingsSubTab('members');
+        }
+
+        function switchSettingsSubTab(tab) {
+            const tabs = ['members', 'locations', 'tags', 'data'];
+            const activeClass = "flex-1 text-center py-1.5 text-[11px] font-bold rounded-lg bg-indigo-600 text-white cursor-pointer transition-all";
+            const inactiveClass = "flex-1 text-center py-1.5 text-[11px] font-bold rounded-lg text-gray-600 hover:bg-gray-100 cursor-pointer transition-all";
+
+            tabs.forEach(t => {
+                document.getElementById(`settings-panel-${t}`).classList.toggle("hidden", t !== tab);
+                document.getElementById(`settings-subtab-${t}`).className = (t === tab) ? activeClass : inactiveClass;
+            });
         }
         
         function renderMemberLibrarySettings() {
