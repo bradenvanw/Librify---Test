@@ -980,13 +980,17 @@
                     return;
                 } 
         
-                // 4. Fall back to local sheet cache if available
-                if (cachedBookData) {
-                    currentScannedBook = { ...cachedBookData };
+                // 4. Fall back to data already in your own catalog, if available — either the
+                // in-memory cachedBookData (clicked from a list) or the copies we already
+                // fetched from the sheet by ISBN (e.g. from a scan). This means a transient
+                // Google Books outage doesn't block you from opening a book you already own.
+                const fallbackSource = cachedBookData || (activeCopiesData.length > 0 ? activeCopiesData[0] : null);
+                if (fallbackSource) {
+                    currentScannedBook = { ...fallbackSource };
                     if (!currentScannedBook.coverImage && currentScannedBook.thumbnail) {
                         currentScannedBook.coverImage = currentScannedBook.thumbnail;
                     }
-                    showStatus("Loaded details from cache.", "success");
+                    showStatus("Loaded details from your catalog.", "success");
                     renderIntegratedLayout();
                     return;
                 }
