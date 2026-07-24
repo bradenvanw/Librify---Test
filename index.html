@@ -797,7 +797,7 @@
 
                 let tagsBadgesHTML = '';
                 if (book.tags && book.tags.trim() !== '') {
-                    const tagList = book.tags.split(',').map(t => t.trim()).filter(Boolean);
+                    const tagList = book.tags.split(',').map(t => t.trim()).filter(Boolean).filter(t => isTagManageable(t));
                     tagsBadgesHTML = tagList.map(tag => 
                         `<span class="bg-indigo-50 text-indigo-700 border border-indigo-100 text-[9px] font-semibold px-1.5 py-0.5 rounded-md">🏷️ ${tag}</span>`
                     ).join(' ');
