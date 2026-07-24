@@ -114,7 +114,10 @@
                 🔍 Search
             </button>
             <button id="tab-status-mode" onclick="switchAppMode('status')" class="flex-1 text-center py-2 text-xs font-bold rounded-lg text-gray-600 hover:text-gray-900 cursor-pointer transition-all">
-                📊 Status
+                📖 Reading
+            </button>
+            <button id="tab-checkout-mode" onclick="switchAppMode('checkout')" class="flex-1 text-center py-2 text-xs font-bold rounded-lg text-gray-600 hover:text-gray-900 cursor-pointer transition-all">
+                📦 Checkout
             </button>
         </div>
 
@@ -186,7 +189,7 @@
             <div id="search-results-list" class="space-y-3"></div>
         </div>
 
-        <!-- ================= STATUS MODE VIEW ================= -->
+        <!-- ================= READING (STATUS) MODE VIEW ================= -->
         <div id="view-status-mode" class="hidden space-y-6">
             <!-- Currently Reading Section -->
             <div class="bg-white rounded-2xl shadow-sm border border-gray-100 p-5 space-y-3">
@@ -194,6 +197,33 @@
                     📖 Currently Reading
                 </h3>
                 <div id="reading-list-container" class="space-y-3"></div>
+            </div>
+        </div>
+
+        <!-- ================= CHECKOUT MODE VIEW ================= -->
+        <div id="view-checkout-mode" class="hidden space-y-6">
+            <!-- Checkout Summary Stats -->
+            <div class="grid grid-cols-3 gap-2 bg-white rounded-2xl p-4 shadow-2xs border border-gray-100 text-center">
+                <div class="p-1">
+                    <span class="block text-xs text-gray-400 font-bold uppercase tracking-wider">Checked Out</span>
+                    <span id="checkout-stat-total" class="text-lg font-black text-amber-600">0</span>
+                </div>
+                <div class="p-1">
+                    <span class="block text-xs text-gray-400 font-bold uppercase tracking-wider">Overdue</span>
+                    <span id="checkout-stat-overdue" class="text-lg font-black text-red-600">0</span>
+                </div>
+                <div class="p-1">
+                    <span class="block text-xs text-gray-400 font-bold uppercase tracking-wider">Due Soon</span>
+                    <span id="checkout-stat-duesoon" class="text-lg font-black text-amber-500">0</span>
+                </div>
+            </div>
+
+            <!-- Per-Borrower Breakdown -->
+            <div id="checkout-borrower-summary-card" class="hidden bg-white rounded-2xl shadow-sm border border-gray-100 p-5 space-y-3">
+                <h3 class="text-sm font-bold text-gray-600 uppercase tracking-wider flex items-center gap-2">
+                    👥 By Borrower
+                </h3>
+                <div id="checkout-borrower-summary" class="flex flex-wrap gap-2"></div>
             </div>
 
             <!-- Checked Out Section -->
@@ -303,9 +333,11 @@
         
         const viewSearchMode = document.getElementById("view-search-mode");
         const viewStatusMode = document.getElementById("view-status-mode");
+        const viewCheckoutMode = document.getElementById("view-checkout-mode");
         
         const tabSearchMode = document.getElementById("tab-search-mode");
         const tabStatusMode = document.getElementById("tab-status-mode");
+        const tabCheckoutMode = document.getElementById("tab-checkout-mode");
 
         const addBookModal = document.getElementById("add-book-modal");
         const actionBtnContainer = document.getElementById("action-btn-container");
@@ -413,14 +445,20 @@
         function switchAppMode(mode) {
             viewSearchMode.classList.add("hidden");
             viewStatusMode.classList.add("hidden");
+            viewCheckoutMode.classList.add("hidden");
 
             tabSearchMode.className = "flex-1 text-center py-2 text-xs font-bold rounded-lg text-gray-600 hover:text-gray-900 cursor-pointer transition-all";
             tabStatusMode.className = "flex-1 text-center py-2 text-xs font-bold rounded-lg text-gray-600 hover:text-gray-900 cursor-pointer transition-all";
+            tabCheckoutMode.className = "flex-1 text-center py-2 text-xs font-bold rounded-lg text-gray-600 hover:text-gray-900 cursor-pointer transition-all";
 
             if (mode === 'status') {
                 viewStatusMode.classList.remove("hidden");
                 tabStatusMode.className = "flex-1 text-center py-2 text-xs font-bold rounded-lg bg-white text-gray-800 shadow-xs cursor-pointer transition-all";
-                renderStatusTab();
+                renderReadingTab();
+            } else if (mode === 'checkout') {
+                viewCheckoutMode.classList.remove("hidden");
+                tabCheckoutMode.className = "flex-1 text-center py-2 text-xs font-bold rounded-lg bg-white text-gray-800 shadow-xs cursor-pointer transition-all";
+                renderCheckoutTab();
             } else {
                 viewSearchMode.classList.remove("hidden");
                 tabSearchMode.className = "flex-1 text-center py-2 text-xs font-bold rounded-lg bg-white text-gray-800 shadow-xs cursor-pointer transition-all";
@@ -564,7 +602,8 @@
                     globalCatalogCache = [];
                     filterLocalCatalogCache();
                     runDatabaseAnalyticsEngine();
-                    if (!viewStatusMode.classList.contains("hidden")) renderStatusTab();
+                    if (!viewStatusMode.classList.contains("hidden")) renderReadingTab();
+                    if (!viewCheckoutMode.classList.contains("hidden")) renderCheckoutTab();
                     return;
                 }
                 
@@ -572,7 +611,8 @@
                 searchStatusMessage.innerText = `✅ Database synchronized: ${globalCatalogCache.length} books loaded.`;
                 filterLocalCatalogCache();
                 runDatabaseAnalyticsEngine();
-                if (!viewStatusMode.classList.contains("hidden")) renderStatusTab();
+                if (!viewStatusMode.classList.contains("hidden")) renderReadingTab();
+                if (!viewCheckoutMode.classList.contains("hidden")) renderCheckoutTab();
             } catch(e) {
                 searchStatusMessage.innerHTML = `❌ Connection Failed: ${e.message}`;
                 runDatabaseAnalyticsEngine();
@@ -710,15 +750,11 @@
             });
         }
 
-        function renderStatusTab() {
+        function renderReadingTab() {
             const readingContainer = document.getElementById("reading-list-container");
-            const checkedOutContainer = document.getElementById("checkedout-list-container");
-            
             readingContainer.innerHTML = "";
-            checkedOutContainer.innerHTML = "";
 
             const readingBooks = globalCatalogCache.filter(b => b.status === "Currently Reading");
-            const checkedOutBooks = globalCatalogCache.filter(b => b.status === "Checked Out");
 
             if (readingBooks.length === 0) {
                 readingContainer.innerHTML = `<div class="text-xs text-gray-400 italic py-2">No books currently being read.</div>`;
@@ -736,7 +772,56 @@
                     readingContainer.appendChild(item);
                 });
             }
+        }
 
+        function renderCheckoutTab() {
+            const checkedOutContainer = document.getElementById("checkedout-list-container");
+            const borrowerSummaryCard = document.getElementById("checkout-borrower-summary-card");
+            const borrowerSummary = document.getElementById("checkout-borrower-summary");
+            checkedOutContainer.innerHTML = "";
+            borrowerSummary.innerHTML = "";
+
+            const checkedOutBooks = globalCatalogCache.filter(b => b.status === "Checked Out");
+
+            // --- Summary stats ---
+            let overdueCount = 0;
+            let dueSoonCount = 0;
+            const borrowerCounts = {};
+
+            checkedOutBooks.forEach(book => {
+                const isOverdue = checkItemOverdueStatus(book.dueDate);
+                const isDueSoon = !isOverdue && checkItemDueSoonStatus(book.dueDate);
+                if (isOverdue) overdueCount++;
+                else if (isDueSoon) dueSoonCount++;
+
+                const name = book.borrower || 'Unknown';
+                if (!borrowerCounts[name]) borrowerCounts[name] = { count: 0, overdue: 0 };
+                borrowerCounts[name].count++;
+                if (isOverdue) borrowerCounts[name].overdue++;
+            });
+
+            document.getElementById("checkout-stat-total").innerText = checkedOutBooks.length;
+            document.getElementById("checkout-stat-overdue").innerText = overdueCount;
+            document.getElementById("checkout-stat-duesoon").innerText = dueSoonCount;
+
+            // --- Per-borrower breakdown ---
+            const borrowerNames = Object.keys(borrowerCounts);
+            if (borrowerNames.length === 0) {
+                borrowerSummaryCard.classList.add("hidden");
+            } else {
+                borrowerSummaryCard.classList.remove("hidden");
+                borrowerNames.sort((a, b) => borrowerCounts[b].count - borrowerCounts[a].count).forEach(name => {
+                    const info = borrowerCounts[name];
+                    const pill = document.createElement("div");
+                    pill.className = info.overdue > 0 
+                        ? "flex items-center gap-1.5 bg-red-50 border border-red-200 text-red-700 text-xs font-semibold px-3 py-1.5 rounded-full"
+                        : "flex items-center gap-1.5 bg-gray-50 border border-gray-200 text-gray-700 text-xs font-semibold px-3 py-1.5 rounded-full";
+                    pill.innerHTML = `👤 ${name} <span class="bg-white/70 px-1.5 py-0.5 rounded-full text-[10px]">${info.count}</span>${info.overdue > 0 ? ` <span class="text-[9px] font-black uppercase">⚠️ ${info.overdue} overdue</span>` : ''}`;
+                    borrowerSummary.appendChild(pill);
+                });
+            }
+
+            // --- Checked out list ---
             if (checkedOutBooks.length === 0) {
                 checkedOutContainer.innerHTML = `<div class="text-xs text-gray-400 italic py-2">No books currently checked out.</div>`;
             } else {
