@@ -116,9 +116,6 @@
             <button id="tab-status-mode" onclick="switchAppMode('status')" class="flex-1 text-center py-2 text-xs font-bold rounded-lg text-gray-600 hover:text-gray-900 cursor-pointer transition-all">
                 📊 Status
             </button>
-            <button id="tab-scan-mode" onclick="switchAppMode('scan')" class="flex-1 text-center py-2 text-xs font-bold rounded-lg text-gray-600 hover:text-gray-900 cursor-pointer transition-all">
-                📷 Scanner
-            </button>
         </div>
 
         <!-- ================= SEARCH MODE VIEW ================= -->
@@ -208,9 +205,20 @@
             </div>
         </div>
 
-        <!-- ================= SCAN MODE VIEW ================= -->
-        <div id="view-scan-mode" class="hidden space-y-4">
-            <div class="bg-white rounded-2xl shadow-sm border border-gray-100 p-5 space-y-4">
+        <!-- ================= FLOATING ADD BOOK BUTTON ================= -->
+        <button id="fab-add-book" onclick="openAddBookModal()" title="Add a Book" class="fixed bottom-6 right-6 z-30 w-14 h-14 rounded-full bg-indigo-600 hover:bg-indigo-700 text-white text-3xl font-light shadow-lg cursor-pointer flex items-center justify-center transition-all hover:scale-105 leading-none">
+            <span class="-mt-0.5">+</span>
+        </button>
+
+    </div>
+
+    <!-- Add Book Modal (Scan / Manual ISBN Entry) -->
+    <div id="add-book-modal" class="hidden fixed inset-0 bg-slate-900/60 backdrop-blur-xs flex items-start sm:items-center justify-center p-4 z-40 overflow-y-auto">
+        <div class="max-w-xl w-full my-8 relative space-y-4">
+            <button onclick="closeAddBookModal()" class="absolute -top-3 -right-3 bg-white rounded-full w-9 h-9 shadow-lg border border-gray-200 text-gray-500 hover:text-gray-800 font-bold text-lg cursor-pointer z-10 flex items-center justify-center" title="Close">&times;</button>
+
+            <div class="bg-white rounded-2xl shadow-xl border border-gray-100 p-5 space-y-4">
+                <h2 class="text-sm font-bold text-gray-800 uppercase tracking-wider">📷 Add a Book</h2>
                 <div class="flex flex-col sm:flex-row gap-3">
                     <div class="relative flex-grow">
                         <input type="text" id="isbn-input" placeholder="Enter 10 or 13-digit ISBN..." 
@@ -240,12 +248,11 @@
                 <div id="scan-status-log" class="hidden text-sm p-3 rounded-xl border font-medium text-center"></div>
             </div>
 
-            <div id="history-section" class="mt-8 hidden">
+            <div id="history-section" class="hidden">
                 <div class="border-b border-gray-200 pb-2 mb-3"><h2 class="text-xs font-bold text-gray-400 uppercase tracking-wider">Session Activity</h2></div>
                 <div id="session-log" class="space-y-3"></div>
             </div>
         </div>
-
     </div>
 
     <!-- Manual Entry Modal -->
@@ -294,14 +301,13 @@
         const SHARED_SECRET = "I58JVEAoCQUCx3E";
         const FALLBACK_COVER = 'https://images.unsplash.com/photo-1543002588-bfa74002ed7e?q=80&w=300';
         
-        const viewScanMode = document.getElementById("view-scan-mode");
         const viewSearchMode = document.getElementById("view-search-mode");
         const viewStatusMode = document.getElementById("view-status-mode");
         
-        const tabScanMode = document.getElementById("tab-scan-mode");
         const tabSearchMode = document.getElementById("tab-search-mode");
         const tabStatusMode = document.getElementById("tab-status-mode");
 
+        const addBookModal = document.getElementById("add-book-modal");
         const actionBtnContainer = document.getElementById("action-btn-container");
         const toggleScanBtn = document.getElementById("toggle-scan-btn");
         const scannerSection = document.getElementById("scanner-section");
@@ -405,19 +411,13 @@
         fetchAllBooksFromGoogleSheet();
 
         function switchAppMode(mode) {
-            stopScanning();
-            viewScanMode.classList.add("hidden");
             viewSearchMode.classList.add("hidden");
             viewStatusMode.classList.add("hidden");
 
-            tabScanMode.className = "flex-1 text-center py-2 text-xs font-bold rounded-lg text-gray-600 hover:text-gray-900 cursor-pointer transition-all";
             tabSearchMode.className = "flex-1 text-center py-2 text-xs font-bold rounded-lg text-gray-600 hover:text-gray-900 cursor-pointer transition-all";
             tabStatusMode.className = "flex-1 text-center py-2 text-xs font-bold rounded-lg text-gray-600 hover:text-gray-900 cursor-pointer transition-all";
 
-            if (mode === 'scan') {
-                viewScanMode.classList.remove("hidden");
-                tabScanMode.className = "flex-1 text-center py-2 text-xs font-bold rounded-lg bg-white text-gray-800 shadow-xs cursor-pointer transition-all";
-            } else if (mode === 'status') {
+            if (mode === 'status') {
                 viewStatusMode.classList.remove("hidden");
                 tabStatusMode.className = "flex-1 text-center py-2 text-xs font-bold rounded-lg bg-white text-gray-800 shadow-xs cursor-pointer transition-all";
                 renderStatusTab();
@@ -1352,6 +1352,16 @@
             activeCopiesData = [];
             selectedUniqueId = "";
             pendingSelectUniqueId = null;
+            isbnInput.value = "";
+        }
+
+        function openAddBookModal() {
+            addBookModal.classList.remove("hidden");
+        }
+
+        function closeAddBookModal() {
+            stopScanning();
+            addBookModal.classList.add("hidden");
             isbnInput.value = "";
         }
         
