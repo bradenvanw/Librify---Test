@@ -94,10 +94,16 @@
 
                     <!-- Tags Sub-Manager Panel -->
                     <div id="settings-panel-tags" class="space-y-2 hidden">
-                        <p class="text-[11px] text-gray-400 italic">Toggle the checkbox to pin a tag as a quick filter on your Search dashboard.</p>
+                        <p class="text-[11px] text-gray-400 italic">Global tags apply for everyone. Personal tags belong to one household member and are labeled with their name.</p>
                         <div class="flex gap-2">
                             <input type="text" id="new-tag-input" placeholder="e.g., Sci-Fi Masterpieces..." class="flex-grow bg-gray-50 border border-gray-200 rounded-lg p-2 text-xs focus:outline-none focus:ring-1 focus:ring-indigo-500">
                             <button onclick="addNewCustomUserTag()" class="bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-bold px-4 py-2 rounded-lg cursor-pointer">Add</button>
+                        </div>
+                        <div class="flex items-center gap-2">
+                            <label class="text-[10px] font-bold text-gray-500 uppercase shrink-0">Assign to:</label>
+                            <select id="new-tag-owner-select" class="flex-grow bg-gray-50 border border-gray-200 rounded-lg p-1.5 text-xs font-medium focus:outline-none focus:ring-1 focus:ring-indigo-500">
+                                <option value="">🌐 Global (everyone)</option>
+                            </select>
                         </div>
                         <div id="tag-library-list" class="flex flex-col gap-1.5 pt-1"></div>
                     </div>
@@ -123,6 +129,9 @@
             </button>
             <button id="tab-checkout-mode" onclick="switchAppMode('checkout')" class="flex-1 text-center py-2 text-xs font-bold rounded-lg text-gray-600 hover:text-gray-900 cursor-pointer transition-all">
                 📦 Checkout
+            </button>
+            <button id="tab-home-mode" onclick="switchAppMode('home')" class="flex-1 text-center py-2 text-xs font-bold rounded-lg text-gray-600 hover:text-gray-900 cursor-pointer transition-all">
+                🏠 Home
             </button>
         </div>
 
@@ -240,6 +249,31 @@
             </div>
         </div>
 
+        <!-- ================= HOME MODE VIEW ================= -->
+        <div id="view-home-mode" class="hidden space-y-6">
+            <div id="home-member-picker-row" class="flex gap-1.5 overflow-x-auto pb-1 no-scrollbar select-none"></div>
+
+            <div id="home-no-members-message" class="hidden bg-white rounded-2xl p-6 text-center text-xs text-gray-400 border border-gray-100">
+                Add household members in Settings to see their personal Home view here.
+            </div>
+
+            <div id="home-member-content" class="space-y-6">
+                <div class="bg-white rounded-2xl shadow-sm border border-gray-100 p-5 space-y-3">
+                    <h3 class="text-sm font-bold text-indigo-600 uppercase tracking-wider flex items-center gap-2">
+                        📖 Currently Reading
+                    </h3>
+                    <div id="home-reading-list-container" class="space-y-3"></div>
+                </div>
+
+                <div class="bg-white rounded-2xl shadow-sm border border-gray-100 p-5 space-y-3">
+                    <h3 class="text-sm font-bold text-emerald-600 uppercase tracking-wider flex items-center gap-2">
+                        📚 Want to Read
+                    </h3>
+                    <div id="home-wanttoread-list-container" class="space-y-3"></div>
+                </div>
+            </div>
+        </div>
+
         <!-- ================= FLOATING ADD BOOK BUTTON ================= -->
         <button id="fab-add-book" onclick="openAddBookModal()" title="Add a Book" class="fixed bottom-6 right-6 z-30 w-14 h-14 rounded-full bg-indigo-600 hover:bg-indigo-700 text-white text-3xl font-light shadow-lg cursor-pointer flex items-center justify-center transition-all hover:scale-105 leading-none">
             <span class="-mt-0.5">+</span>
@@ -339,10 +373,14 @@
         const viewSearchMode = document.getElementById("view-search-mode");
         const viewStatusMode = document.getElementById("view-status-mode");
         const viewCheckoutMode = document.getElementById("view-checkout-mode");
+        const viewHomeMode = document.getElementById("view-home-mode");
         
         const tabSearchMode = document.getElementById("tab-search-mode");
         const tabStatusMode = document.getElementById("tab-status-mode");
         const tabCheckoutMode = document.getElementById("tab-checkout-mode");
+        const tabHomeMode = document.getElementById("tab-home-mode");
+
+        let currentHomeMember = "";
 
         const addBookModal = document.getElementById("add-book-modal");
         const actionBtnContainer = document.getElementById("action-btn-container");
@@ -495,10 +533,12 @@
             viewSearchMode.classList.add("hidden");
             viewStatusMode.classList.add("hidden");
             viewCheckoutMode.classList.add("hidden");
+            viewHomeMode.classList.add("hidden");
 
             tabSearchMode.className = "flex-1 text-center py-2 text-xs font-bold rounded-lg text-gray-600 hover:text-gray-900 cursor-pointer transition-all";
             tabStatusMode.className = "flex-1 text-center py-2 text-xs font-bold rounded-lg text-gray-600 hover:text-gray-900 cursor-pointer transition-all";
             tabCheckoutMode.className = "flex-1 text-center py-2 text-xs font-bold rounded-lg text-gray-600 hover:text-gray-900 cursor-pointer transition-all";
+            tabHomeMode.className = "flex-1 text-center py-2 text-xs font-bold rounded-lg text-gray-600 hover:text-gray-900 cursor-pointer transition-all";
 
             if (mode === 'status') {
                 viewStatusMode.classList.remove("hidden");
@@ -508,6 +548,10 @@
                 viewCheckoutMode.classList.remove("hidden");
                 tabCheckoutMode.className = "flex-1 text-center py-2 text-xs font-bold rounded-lg bg-white text-gray-800 shadow-xs cursor-pointer transition-all";
                 renderCheckoutTab();
+            } else if (mode === 'home') {
+                viewHomeMode.classList.remove("hidden");
+                tabHomeMode.className = "flex-1 text-center py-2 text-xs font-bold rounded-lg bg-white text-gray-800 shadow-xs cursor-pointer transition-all";
+                renderHomeTab();
             } else {
                 viewSearchMode.classList.remove("hidden");
                 tabSearchMode.className = "flex-1 text-center py-2 text-xs font-bold rounded-lg bg-white text-gray-800 shadow-xs cursor-pointer transition-all";
@@ -653,6 +697,7 @@
                     runDatabaseAnalyticsEngine();
                     if (!viewStatusMode.classList.contains("hidden")) renderReadingTab();
                     if (!viewCheckoutMode.classList.contains("hidden")) renderCheckoutTab();
+                    if (!viewHomeMode.classList.contains("hidden")) renderHomeMemberContent();
                     return;
                 }
                 
@@ -662,6 +707,7 @@
                 runDatabaseAnalyticsEngine();
                 if (!viewStatusMode.classList.contains("hidden")) renderReadingTab();
                 if (!viewCheckoutMode.classList.contains("hidden")) renderCheckoutTab();
+                if (!viewHomeMode.classList.contains("hidden")) renderHomeMemberContent();
             } catch(e) {
                 searchStatusMessage.innerHTML = `❌ Connection Failed: ${e.message}`;
                 runDatabaseAnalyticsEngine();
@@ -889,6 +935,91 @@
                         <button onclick="manageBookByIsbn('${book.isbn}', '${book.uniqueId}')" class="text-[10px] bg-white border border-gray-300 px-2.5 py-1 rounded-lg font-bold text-gray-700 cursor-pointer hover:bg-gray-100 transition-colors">Manage</button>
                     `;
                     checkedOutContainer.appendChild(item);
+                });
+            }
+        }
+
+        function renderHomeTab() {
+            const pickerRow = document.getElementById("home-member-picker-row");
+            const noMembersMsg = document.getElementById("home-no-members-message");
+            const memberContent = document.getElementById("home-member-content");
+            pickerRow.innerHTML = "";
+
+            if (householdMembers.length === 0) {
+                noMembersMsg.classList.remove("hidden");
+                memberContent.classList.add("hidden");
+                return;
+            }
+
+            noMembersMsg.classList.add("hidden");
+            memberContent.classList.remove("hidden");
+
+            if (!currentHomeMember || !householdMembers.includes(currentHomeMember)) {
+                currentHomeMember = householdMembers[0];
+            }
+
+            householdMembers.forEach(m => {
+                const pill = document.createElement("button");
+                pill.type = "button";
+                pill.className = (m === currentHomeMember)
+                    ? "px-3 py-1.5 bg-indigo-600 text-white border border-indigo-600 text-xs font-bold rounded-full whitespace-nowrap cursor-pointer shrink-0 transition-all"
+                    : "px-3 py-1.5 bg-gray-50 text-gray-600 border border-gray-200 text-xs font-medium rounded-full whitespace-nowrap cursor-pointer shrink-0 transition-all";
+                pill.innerText = `👤 ${m}`;
+                pill.onclick = () => selectHomeMember(m);
+                pickerRow.appendChild(pill);
+            });
+
+            renderHomeMemberContent();
+        }
+
+        function selectHomeMember(member) {
+            currentHomeMember = member;
+            renderHomeTab();
+        }
+
+        function renderHomeMemberContent() {
+            const readingContainer = document.getElementById("home-reading-list-container");
+            const wantToReadContainer = document.getElementById("home-wanttoread-list-container");
+            readingContainer.innerHTML = "";
+            wantToReadContainer.innerHTML = "";
+
+            if (!currentHomeMember) return;
+
+            const readingBooks = globalCatalogCache.filter(b => b.status === "Currently Reading" && b.reader === currentHomeMember);
+            const wantTag = wantToReadTagFor(currentHomeMember);
+            const wantToReadBooks = globalCatalogCache.filter(b => (b.tags || "").toString().split(",").map(t => t.trim()).includes(wantTag));
+
+            if (readingBooks.length === 0) {
+                readingContainer.innerHTML = `<div class="text-xs text-gray-400 italic py-2">Not currently reading anything.</div>`;
+            } else {
+                readingBooks.forEach(book => {
+                    const item = document.createElement("div");
+                    item.className = "flex items-center justify-between bg-indigo-50/50 p-3 rounded-xl border border-indigo-100 text-xs cursor-pointer hover:border-indigo-300 transition-colors";
+                    item.innerHTML = `
+                        <div>
+                            <p class="font-bold text-gray-900">${book.title}</p>
+                            <p class="text-indigo-600 font-medium">by ${book.authors || 'Unknown Author'}</p>
+                        </div>
+                        <button onclick="manageBookByIsbn('${book.isbn}', '${book.uniqueId}')" class="text-[10px] bg-white border border-indigo-200 px-2.5 py-1 rounded-lg font-bold text-indigo-600 cursor-pointer hover:bg-indigo-50 transition-colors">Manage</button>
+                    `;
+                    readingContainer.appendChild(item);
+                });
+            }
+
+            if (wantToReadBooks.length === 0) {
+                wantToReadContainer.innerHTML = `<div class="text-xs text-gray-400 italic py-2">No books on the want-to-read list yet. Add the "${wantTag}" tag to a book to add it here.</div>`;
+            } else {
+                wantToReadBooks.forEach(book => {
+                    const item = document.createElement("div");
+                    item.className = "flex items-center justify-between bg-emerald-50/50 p-3 rounded-xl border border-emerald-100 text-xs cursor-pointer hover:border-emerald-300 transition-colors";
+                    item.innerHTML = `
+                        <div>
+                            <p class="font-bold text-gray-900">${book.title}</p>
+                            <p class="text-emerald-700 font-medium">by ${book.authors || 'Unknown Author'}</p>
+                        </div>
+                        <button onclick="manageBookByIsbn('${book.isbn}', '${book.uniqueId}')" class="text-[10px] bg-white border border-emerald-200 px-2.5 py-1 rounded-lg font-bold text-emerald-700 cursor-pointer hover:bg-emerald-50 transition-colors">Manage</button>
+                    `;
+                    wantToReadContainer.appendChild(item);
                 });
             }
         }
@@ -1314,6 +1445,18 @@
                 `;
                 memberLibraryList.appendChild(row);
             });
+            renderTagOwnerSelectOptions();
+        }
+
+        // Personal tags are named "<Member>: <TagName>" — this convention keeps ownership
+        // baked into the plain tag string itself, so no backend/schema change is needed.
+        function wantToReadTagFor(member) {
+            return `${member}: Want to Read`;
+        }
+
+        function tagOwner(tagName) {
+            const match = householdMembers.find(m => tagName.startsWith(`${m}: `));
+            return match || null;
         }
 
         function addNewHouseholdMember() {
@@ -1321,9 +1464,15 @@
             if (v && !householdMembers.includes(v)) {
                 householdMembers.push(v);
                 newMemberInput.value = "";
+
+                const personalTag = wantToReadTagFor(v);
+                if (!userTags.includes(personalTag)) userTags.push(personalTag);
+
                 syncSettingsToServer();
                 renderMemberLibrarySettings();
+                renderTagLibrarySettings();
                 if (currentScannedBook) refreshActiveFormMemberDropdown();
+                if (!viewHomeMode.classList.contains("hidden")) renderHomeTab();
             }
         }
 
@@ -1331,7 +1480,9 @@
             householdMembers.splice(i, 1);
             syncSettingsToServer();
             renderMemberLibrarySettings();
+            renderTagLibrarySettings();
             if (currentScannedBook) refreshActiveFormMemberDropdown();
+            if (!viewHomeMode.classList.contains("hidden")) renderHomeTab();
         }
 
         function refreshActiveFormMemberDropdown(selectedReader = "") {
@@ -1472,35 +1623,83 @@
             if (userLocations.includes(p)) d.value = p; 
         }
         
+        function renderTagOwnerSelectOptions() {
+            const select = document.getElementById("new-tag-owner-select");
+            if (!select) return;
+            const prevVal = select.value;
+            select.innerHTML = `<option value="">🌐 Global (everyone)</option>`;
+            householdMembers.forEach(m => {
+                const opt = document.createElement("option");
+                opt.value = m;
+                opt.innerText = `👤 ${m}`;
+                select.appendChild(opt);
+            });
+            if ([...select.options].some(o => o.value === prevVal)) select.value = prevVal;
+        }
+
         function renderTagLibrarySettings() { 
             tagLibraryList.innerHTML = ""; 
-            userTags.forEach((t, i) => { 
-                const isPinned = visibleDashboardFilters.includes(t);
-                const row = document.createElement("div"); 
-                row.className = "flex items-center justify-between bg-gray-50 border border-gray-200 p-2 rounded-xl text-xs font-medium"; 
-                row.innerHTML = `
-                    <label class="flex items-center gap-2 cursor-pointer flex-grow">
-                        <input type="checkbox" ${isPinned ? 'checked' : ''} onchange="toggleDashboardFilterVisibility('${t.replace(/'/g, "\\'")}', this.checked)" class="accent-indigo-600 rounded">
-                        <span>🏷️ ${t}</span>
-                    </label>
-                    <button onclick="renameCustomUserTag(${i})" title="Rename" class="text-gray-400 hover:text-indigo-600 font-bold px-1 cursor-pointer">✏️</button>
-                    <button onclick="deleteCustomUserTag(${i})" class="text-gray-400 hover:text-red-500 font-bold px-1 ml-1 cursor-pointer">&times;</button>
-                `; 
-                tagLibraryList.appendChild(row); 
-            }); 
+
+            const groups = { global: [] };
+            householdMembers.forEach(m => groups[m] = []);
+
+            userTags.forEach((t, i) => {
+                const owner = tagOwner(t);
+                if (owner && groups[owner]) {
+                    groups[owner].push({ tag: t, index: i, label: t.slice(owner.length + 2) });
+                } else {
+                    groups.global.push({ tag: t, index: i, label: t });
+                }
+            });
+
+            function renderTagGroup(title, items) {
+                if (items.length === 0) return;
+                const header = document.createElement("div");
+                header.className = "text-[10px] font-bold text-gray-400 uppercase tracking-wider pt-2 first:pt-0";
+                header.innerText = title;
+                tagLibraryList.appendChild(header);
+
+                items.forEach(({ tag, index, label }) => {
+                    const isPinned = visibleDashboardFilters.includes(tag);
+                    const row = document.createElement("div"); 
+                    row.className = "flex items-center justify-between bg-gray-50 border border-gray-200 p-2 rounded-xl text-xs font-medium"; 
+                    row.innerHTML = `
+                        <label class="flex items-center gap-2 cursor-pointer flex-grow">
+                            <input type="checkbox" ${isPinned ? 'checked' : ''} onchange="toggleDashboardFilterVisibility('${tag.replace(/'/g, "\\'")}', this.checked)" class="accent-indigo-600 rounded">
+                            <span>🏷️ ${label}</span>
+                        </label>
+                        <button onclick="renameCustomUserTag(${index})" title="Rename" class="text-gray-400 hover:text-indigo-600 font-bold px-1 cursor-pointer">✏️</button>
+                        <button onclick="deleteCustomUserTag(${index})" class="text-gray-400 hover:text-red-500 font-bold px-1 ml-1 cursor-pointer">&times;</button>
+                    `; 
+                    tagLibraryList.appendChild(row); 
+                });
+            }
+
+            renderTagGroup("🌐 Global", groups.global);
+            householdMembers.forEach(m => renderTagGroup(`👤 ${m}`, groups[m]));
+
             renderQuickFilterPillsModule(); 
         }
         
         function addNewCustomUserTag() { 
-            const v = newTagInput.value.trim(); 
-            if (v && !userTags.includes(v)) { 
-                userTags.push(v); 
-                visibleDashboardFilters.push(v);
-                newTagInput.value = ""; 
-                syncSettingsToServer();
-                renderTagLibrarySettings(); 
-                if (currentScannedBook) refreshActiveFormTagChips(); 
-            } 
+            const raw = newTagInput.value.trim(); 
+            if (!raw) return;
+
+            const ownerSelect = document.getElementById("new-tag-owner-select");
+            const owner = ownerSelect ? ownerSelect.value : "";
+            const v = owner ? `${owner}: ${raw}` : raw;
+
+            if (userTags.includes(v)) {
+                alert(`That tag already exists.`);
+                return;
+            }
+
+            userTags.push(v); 
+            visibleDashboardFilters.push(v);
+            newTagInput.value = ""; 
+            syncSettingsToServer();
+            renderTagLibrarySettings(); 
+            if (currentScannedBook) refreshActiveFormTagChips(); 
         }
         
         async function deleteCustomUserTag(i) { 
